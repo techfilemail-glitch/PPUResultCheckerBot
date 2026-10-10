@@ -1,0 +1,212 @@
+﻿Code,College,PG Reg,Subject,Stream,SubjectCode
+101,"POST GRADUATE DEPARTMENT OF PPU, PATNA (BOTANY)",M.Sc. Botany,Botany,Science,9101
+102,"POST GRADUATE DEPARTMENT OF PPU, PATNA (CHEMISTRY)",M.Sc. Chemistry,Chemistry,Science,9102
+103,"POST GRADUATE DEPARTMENT OF PPU, PATNA (COMMERCE)",M.Com Commerce and Management,Commerce and Management,Commerce,9301
+104,"POST GRADUATE DEPARTMENT OF PPU, PATNA (ECONOMICS)",M.A. Economics,Economics,Arts,9205
+105,"POST GRADUATE DEPARTMENT OF PPU, PATNA (ENGLISH)",M.A. English,English,Arts,9206
+106,"POST GRADUATE DEPARTMENT OF PPU, PATNA (HINDI)",M.A. Hindi,Hindi,Arts,9208
+107,"POST GRADUATE DEPARTMENT OF PPU, PATNA (HISTORY)",M.A. History,History,Arts,9209
+108,"POST GRADUATE DEPARTMENT OF PPU, PATNA (MATHEMATICS)",M.Sc. Mathematics,Mathematics,Science,9104
+109,"POST GRADUATE DEPARTMENT OF PPU, PATNA (PHYSICS)",M.Sc. Physics,Physics,Science,9105
+110,"POST GRADUATE DEPARTMENT OF PPU, PATNA (PSYCHOLOGY)",M.A. Psychology,Psychology,Arts,9221
+111,"POST GRADUATE DEPARTMENT OF PPU, PATNA (ZOOLOGY)",M.Sc. Zoology,Zoology,Science,9107
+112,"POST GRADUATE DEPARTMENT OF PPU, PATNA (GEOGRAPHY)",M.A. Geography,Geography,Arts,9207
+113,"POST GRADUATE DEPARTMENT OF PPU, PATNA (HOME SCIENCE)",M.A. Home Science,Home Science,Arts,9210
+114,"POST GRADUATE DEPARTMENT OF PPU, PATNA (PHILOSOPHY)",M.A. Philosphy,Philosophy,Arts,9218
+115,"POST GRADUATE DEPARTMENT OF PPU, PATNA (SOCIOLOGY)",M.A. Sociology,Sociology,Arts,9225
+117,"POST GRADUATE DEPARTMENT OF PPU, PATNA (URDU)",M.A. Urdu,Urdu,Arts,9226
+118,"POST GRADUATE DEPARTMENT OF PPU, PATNA (POLITICAL SCIENCE)",M.A. Political Science,Political Science,Arts,9219
+119,"POST GRADUATE DEPARTMENT OF PPU, PATNA (MUSIC)",M.A. Music,Music,Arts,9215
+120,"POST GRADUATE DEPARTMENT OF PPU, PATNA (AI & AS)",M.A. AI and AS,Ancient History (AIAS),Arts,N/A
+201,"A.N. College, Patna",M.Sc. Botany,Botany,Science,9101
+201,"A.N. College, Patna",M.Sc. Chemistry,Chemistry,Science,9102
+201,"A.N. College, Patna",M.A. Economics,Economics,Arts,9205
+201,"A.N. College, Patna",M.A. English,English,Arts,9206
+201,"A.N. College, Patna",M.A. Geography,Geography,Arts,9207
+201,"A.N. College, Patna",M.A. Hindi,Hindi,Arts,9208
+201,"A.N. College, Patna",M.A. History,History,Arts,9209
+201,"A.N. College, Patna",M.A. Mathili,Maithili,Arts,N/A
+201,"A.N. College, Patna",M.Sc. Mathematics,Mathematics,Science,9104
+201,"A.N. College, Patna",M.A. Philosphy,Philosophy,Arts,9218
+201,"A.N. College, Patna",M.Sc. Physics,Physics,Science,9105
+201,"A.N. College, Patna",M.A. Political Science,Political Science,Arts,9219
+201,"A.N. College, Patna",M.A. Psychology,Psychology,Arts,9221
+201,"A.N. College, Patna",M.A. Sociology,Sociology,Arts,9225
+201,"A.N. College, Patna",M.A. Urdu,Urdu,Arts,9226
+201,"A.N. College, Patna",M.Sc. Zoology,Zoology,Science,9107
+202,"A.N.S. College, Barh",M.Sc. Botany,Botany,Science,9101
+202,"A.N.S. College, Barh",M.Sc. Chemistry,Chemistry,Science,9102
+202,"A.N.S. College, Barh",M.A. Economics,Economics,Arts,9205
+202,"A.N.S. College, Barh",M.A. English,English,Arts,9206
+202,"A.N.S. College, Barh",M.A. Hindi,Hindi,Arts,9208
+202,"A.N.S. College, Barh",M.A. History,History,Arts,9209
+202,"A.N.S. College, Barh",M.Sc. Mathematics,Mathematics,Science,9104
+202,"A.N.S. College, Barh",M.Sc. Physics,Physics,Science,9105
+202,"A.N.S. College, Barh",M.A. Political Science,Political Science,Arts,9219
+202,"A.N.S. College, Barh",M.A. Psychology,Psychology,Arts,9221
+202,"A.N.S. College, Barh",M.A. Urdu,Urdu,Arts,9226
+202,"A.N.S. College, Barh",M.Sc. Zoology,Zoology,Science,9107
+203,"B.D. College, Patna",M.Com Commerce and Management,Commerce and Management,Commerce,9301
+203,"B.D. College, Patna",M.A. Economics,Economics,Arts,9205
+203,"B.D. College, Patna",M.A. English,English,Arts,9206
+203,"B.D. College, Patna",M.A. Geography,Geography,Arts,9207
+203,"B.D. College, Patna",M.A. History,History,Arts,9209
+203,"B.D. College, Patna",M.A. Pali,Pali,Arts,9216
+203,"B.D. College, Patna",M.Sc. Physics,Physics,Science,9105
+203,"B.D. College, Patna",M.A. Political Science,Political Science,Arts,9219
+203,"B.D. College, Patna",M.A. Prakrit,Prakrit,Arts,N/A
+203,"B.D. College, Patna",M.A. Sanskrit,Sanskrit,Arts,9224
+203,"B.D. College, Patna",M.A. Sociology,Sociology,Arts,9225
+203,"B.D. College, Patna",M.Sc. Zoology,Zoology,Science,9107
+204,"B.S. College, Danapur",M.Sc. Botany,Botany,Science,9101
+204,"B.S. College, Danapur",M.Sc. Chemistry,Chemistry,Science,9102
+204,"B.S. College, Danapur",M.A. Economics,Economics,Arts,9205
+204,"B.S. College, Danapur",M.A. History,History,Arts,9209
+204,"B.S. College, Danapur",M.Sc. Mathematics,Mathematics,Science,9104
+204,"B.S. College, Danapur",M.Sc. Physics,Physics,Science,9105
+204,"B.S. College, Danapur",M.A. Political Science,Political Science,Arts,9219
+204,"B.S. College, Danapur",M.A. Psychology,Psychology,Arts,9221
+204,"B.S. College, Danapur",M.Sc. Zoology,Zoology,Science,9107
+205,"College of Commerce, Arts and Science, Patna",M.Sc. Botany,Botany,Science,9101
+205,"College of Commerce, Arts and Science, Patna",M.Sc. Chemistry,Chemistry,Science,9102
+205,"College of Commerce, Arts and Science, Patna",M.Com Commerce and Management,Commerce and Management,Commerce,9301
+205,"College of Commerce, Arts and Science, Patna",M.A. Economics,Economics,Arts,9205
+205,"College of Commerce, Arts and Science, Patna",M.A. English,English,Arts,9206
+205,"College of Commerce, Arts and Science, Patna",M.A. Geography,Geography,Arts,9207
+205,"College of Commerce, Arts and Science, Patna",M.A. Hindi,Hindi,Arts,9208
+205,"College of Commerce, Arts and Science, Patna",M.A. History,History,Arts,9209
+205,"College of Commerce, Arts and Science, Patna",M.Sc. Mathematics,Mathematics,Science,9104
+205,"College of Commerce, Arts and Science, Patna",M.Sc. Physics,Physics,Science,9105
+205,"College of Commerce, Arts and Science, Patna",M.A. Political Science,Political Science,Arts,9219
+205,"College of Commerce, Arts and Science, Patna",M.A. Psychology,Psychology,Arts,9221
+205,"College of Commerce, Arts and Science, Patna",M.A. Sociology,Sociology,Arts,9225
+205,"College of Commerce, Arts and Science, Patna",M.Sc. Zoology,Zoology,Science,9107
+206,"G.J. College, Rambagh, Bihta",M.A. Economics,Economics,Arts,9205
+206,"G.J. College, Rambagh, Bihta",M.Sc. Mathematics,Mathematics,Science,9104
+206,"G.J. College, Rambagh, Bihta",M.Sc. Physics,Physics,Science,9105
+206,"G.J. College, Rambagh, Bihta",M.A. Political Science,Political Science,Arts,9219
+206,"G.J. College, Rambagh, Bihta",M.Sc. Zoology,Zoology,Science,9107
+207,"Ganga Devi Mahila Mahavidalaya, Patna",M.Sc. Botany,Botany,Science,9101
+207,"Ganga Devi Mahila Mahavidalaya, Patna",M.A. Economics,Economics,Arts,9205
+207,"Ganga Devi Mahila Mahavidalaya, Patna",M.A. English,English,Arts,9206
+207,"Ganga Devi Mahila Mahavidalaya, Patna",M.A. Hindi,Hindi,Arts,9208
+207,"Ganga Devi Mahila Mahavidalaya, Patna",M.A. History,History,Arts,9209
+207,"Ganga Devi Mahila Mahavidalaya, Patna",M.A. Home Science,Home Science,Arts,9210
+207,"Ganga Devi Mahila Mahavidalaya, Patna",M.A. Political Science,Political Science,Arts,9219
+207,"Ganga Devi Mahila Mahavidalaya, Patna",M.A. Sociology,Sociology,Arts,9225
+207,"Ganga Devi Mahila Mahavidalaya, Patna",M.Sc. Zoology,Zoology,Science,9107
+208,"J.D. Womens College, Patna",M.Sc. Botany,Botany,Science,9101
+208,"J.D. Womens College, Patna",M.Sc. Chemistry,Chemistry,Science,9102
+208,"J.D. Womens College, Patna",M.A. Economics,Economics,Arts,9205
+208,"J.D. Womens College, Patna",M.A. English,English,Arts,9206
+208,"J.D. Womens College, Patna",M.A. Hindi,Hindi,Arts,9208
+208,"J.D. Womens College, Patna",M.A. History,History,Arts,9209
+208,"J.D. Womens College, Patna",M.A. Home Science,Home Science,Arts,9210
+208,"J.D. Womens College, Patna",M.Sc. Mathematics,Mathematics,Science,9104
+208,"J.D. Womens College, Patna",M.A. Music,Music,Arts,9215
+208,"J.D. Womens College, Patna",M.A. Philosphy,Philosophy,Arts,9218
+208,"J.D. Womens College, Patna",M.Sc. Physics,Physics,Science,9105
+208,"J.D. Womens College, Patna",M.A. Political Science,Political Science,Arts,9219
+208,"J.D. Womens College, Patna",M.A. Psychology,Psychology,Arts,9221
+208,"J.D. Womens College, Patna",M.A. Sanskrit,Sanskrit,Arts,9224
+208,"J.D. Womens College, Patna",M.A. Sociology,Sociology,Arts,9225
+208,"J.D. Womens College, Patna",M.A. Urdu,Urdu,Arts,9226
+208,"J.D. Womens College, Patna",M.Sc. Zoology,Zoology,Science,9107
+209,"Jagat Narayan Lal College,Khagaul, Patna",M.Sc. Chemistry,Chemistry,Science,9102
+209,"Jagat Narayan Lal College,Khagaul, Patna",M.A. History,History,Arts,9209
+209,"Jagat Narayan Lal College,Khagaul, Patna",M.A. Political Science,Political Science,Arts,9219
+209,"Jagat Narayan Lal College,Khagaul, Patna",M.Sc. Zoology,Zoology,Science,9107
+210,"Kisan College, Nalanda",M.Com Commerce and Management,Commerce and Management,Commerce,9301
+210,"Kisan College, Nalanda",M.A. Geography,Geography,Arts,9207
+210,"Kisan College, Nalanda",M.Sc. Physics,Physics,Science,9105
+210,"Kisan College, Nalanda",M.A. Psychology,Psychology,Arts,9221
+210,"Kisan College, Nalanda",M.Sc. Zoology,Zoology,Science,9107
+211,"M.M. College, Bikram",M.A. English,English,Arts,9206
+211,"M.M. College, Bikram",M.A. History,History,Arts,9209
+214,"Nalanda College, Biharsharif",M.Sc. Botany,Botany,Science,9101
+214,"Nalanda College, Biharsharif",M.Sc. Chemistry,Chemistry,Science,9102
+214,"Nalanda College, Biharsharif",M.A. Economics,Economics,Arts,9205
+214,"Nalanda College, Biharsharif",M.A. English,English,Arts,9206
+214,"Nalanda College, Biharsharif",M.A. Geography,Geography,Arts,9207
+214,"Nalanda College, Biharsharif",M.A. Hindi,Hindi,Arts,9208
+214,"Nalanda College, Biharsharif",M.A. History,History,Arts,9209
+214,"Nalanda College, Biharsharif",M.Sc. Mathematics,Mathematics,Science,9104
+214,"Nalanda College, Biharsharif",M.A. Philosphy,Philosophy,Arts,9218
+214,"Nalanda College, Biharsharif",M.Sc. Physics,Physics,Science,9105
+214,"Nalanda College, Biharsharif",M.A. Political Science,Political Science,Arts,9219
+214,"Nalanda College, Biharsharif",M.Sc. Zoology,Zoology,Science,9107
+215,"Nalanda Mahila College, Biharsharif",M.A. Psychology,Psychology,Arts,9221
+216,"R.L.S.Y. College, Bakhtiarpur",M.Sc. Botany,Botany,Science,9101
+216,"R.L.S.Y. College, Bakhtiarpur",M.Sc. Chemistry,Chemistry,Science,9102
+216,"R.L.S.Y. College, Bakhtiarpur",M.A. Economics,Economics,Arts,9205
+216,"R.L.S.Y. College, Bakhtiarpur",M.A. English,English,Arts,9206
+216,"R.L.S.Y. College, Bakhtiarpur",M.A. Geography,Geography,Arts,9207
+216,"R.L.S.Y. College, Bakhtiarpur",M.A. Hindi,Hindi,Arts,9208
+216,"R.L.S.Y. College, Bakhtiarpur",M.A. History,History,Arts,9209
+216,"R.L.S.Y. College, Bakhtiarpur",M.Sc. Mathematics,Mathematics,Science,9104
+216,"R.L.S.Y. College, Bakhtiarpur",M.A. Pali,Pali,Arts,9216
+216,"R.L.S.Y. College, Bakhtiarpur",M.A. Philosphy,Philosophy,Arts,9218
+216,"R.L.S.Y. College, Bakhtiarpur",M.Sc. Physics,Physics,Science,9105
+216,"R.L.S.Y. College, Bakhtiarpur",M.A. Political Science,Political Science,Arts,9219
+216,"R.L.S.Y. College, Bakhtiarpur",M.A. Psychology,Psychology,Arts,9221
+216,"R.L.S.Y. College, Bakhtiarpur",M.A. Sanskrit,Sanskrit,Arts,9224
+216,"R.L.S.Y. College, Bakhtiarpur",M.A. Sociology,Sociology,Arts,9225
+216,"R.L.S.Y. College, Bakhtiarpur",M.Sc. Zoology,Zoology,Science,9107
+217,"R.P.M. College, Patna City",M.A. AI and AS,Ancient History (AIAS),Arts,N/A
+217,"R.P.M. College, Patna City",M.A. Hindi,Hindi,Arts,9208
+217,"R.P.M. College, Patna City",M.A. Political Science,Political Science,Arts,9219
+217,"R.P.M. College, Patna City",M.A. Psychology,Psychology,Arts,9221
+218,"Ram Krishna Dwarika College, Patna",M.Sc. Chemistry,Chemistry,Science,9102
+218,"Ram Krishna Dwarika College, Patna",M.Com Commerce and Management,Commerce and Management,Commerce,9301
+218,"Ram Krishna Dwarika College, Patna",M.A. Economics,Economics,Arts,9205
+218,"Ram Krishna Dwarika College, Patna",M.A. Geography,Geography,Arts,9207
+218,"Ram Krishna Dwarika College, Patna",M.A. Hindi,Hindi,Arts,9208
+218,"Ram Krishna Dwarika College, Patna",M.A. History,History,Arts,9209
+218,"Ram Krishna Dwarika College, Patna",M.Sc. Physics,Physics,Science,9105
+218,"Ram Krishna Dwarika College, Patna",M.A. Political Science,Political Science,Arts,9219
+218,"Ram Krishna Dwarika College, Patna",M.A. Sociology,Sociology,Arts,9225
+219,"Ram Ratan Singh College, Mokama, Patna",M.A. English,English,Arts,9206
+219,"Ram Ratan Singh College, Mokama, Patna",M.A. Hindi,Hindi,Arts,9208
+219,"Ram Ratan Singh College, Mokama, Patna",M.Sc. Mathematics,Mathematics,Science,9104
+219,"Ram Ratan Singh College, Mokama, Patna",M.A. Philosphy,Philosophy,Arts,9218
+219,"Ram Ratan Singh College, Mokama, Patna",M.A. Political Science,Political Science,Arts,9219
+220,"S.M.D. College, Punpun",M.A. History,History,Arts,9209
+220,"S.M.D. College, Punpun",M.A. Psychology,Psychology,Arts,9221
+221,"Sri Arvind Mahila College, Patna",M.Sc. Botany,Botany,Science,9101
+221,"Sri Arvind Mahila College, Patna",M.Sc. Chemistry,Chemistry,Science,9102
+221,"Sri Arvind Mahila College, Patna",M.Com Commerce and Management,Commerce and Management,Commerce,9301
+221,"Sri Arvind Mahila College, Patna",M.A. Economics,Economics,Arts,9205
+221,"Sri Arvind Mahila College, Patna",M.A. Hindi,Hindi,Arts,9208
+221,"Sri Arvind Mahila College, Patna",M.A. History,History,Arts,9209
+221,"Sri Arvind Mahila College, Patna",M.A. Home Science,Home Science,Arts,9210
+221,"Sri Arvind Mahila College, Patna",M.Sc. Mathematics,Mathematics,Science,9104
+221,"Sri Arvind Mahila College, Patna",M.A. Music,Music,Arts,9215
+221,"Sri Arvind Mahila College, Patna",M.Sc. Physics,Physics,Science,9105
+221,"Sri Arvind Mahila College, Patna",M.A. Political Science,Political Science,Arts,9219
+221,"Sri Arvind Mahila College, Patna",M.A. Psychology,Psychology,Arts,9221
+221,"Sri Arvind Mahila College, Patna",M.A. Sociology,Sociology,Arts,9225
+221,"Sri Arvind Mahila College, Patna",M.Sc. Zoology,Zoology,Science,9107
+222,"Sri Guru Gobind Singh College, Patna Saheb",M.Com Commerce and Management,Commerce and Management,Commerce,9301
+222,"Sri Guru Gobind Singh College, Patna Saheb",M.A. Geography,Geography,Arts,9207
+223,"S.P.M College, Nalanda",M.Sc. Botany,Botany,Science,9101
+223,"S.P.M College, Nalanda",M.Sc. Chemistry,Chemistry,Science,9102
+223,"S.P.M College, Nalanda",M.A. Economics,Economics,Arts,9205
+223,"S.P.M College, Nalanda",M.A. Geography,Geography,Arts,9207
+223,"S.P.M College, Nalanda",M.Sc. Mathematics,Mathematics,Science,9104
+224,"S.U. College, Hilsa",M.A. Economics,Economics,Arts,9205
+224,"S.U. College, Hilsa",M.A. Geography,Geography,Arts,9207
+224,"S.U. College, Hilsa",M.Sc. Mathematics,Mathematics,Science,9104
+224,"S.U. College, Hilsa",M.A. Political Science,Political Science,Arts,9219
+225,"T.P.S College, Patna",M.Sc. Botany,Botany,Science,9101
+225,"T.P.S College, Patna",M.Sc. Chemistry,Chemistry,Science,9102
+225,"T.P.S College, Patna",M.Com (Self Financed),Commerce and Management,Commerce,N/A
+225,"T.P.S College, Patna",M.A. Economics,Economics,Arts,9205
+225,"T.P.S College, Patna",M.A. English,English,Arts,9206
+225,"T.P.S College, Patna",M.A. Hindi,Hindi,Arts,9208
+225,"T.P.S College, Patna",M.A. History,History,Arts,9209
+225,"T.P.S College, Patna",M.Sc. Mathematics,Mathematics,Science,9104
+225,"T.P.S College, Patna",M.A. Philosphy,Philosophy,Arts,9218
+225,"T.P.S College, Patna",M.Sc. Physics,Physics,Science,9105
+225,"T.P.S College, Patna",M.A. Political Science,Political Science,Arts,9219
+225,"T.P.S College, Patna",M.A. Psychology,Psychology,Arts,9221
+225,"T.P.S College, Patna",M.Sc. Zoology,Zoology,Science,9107

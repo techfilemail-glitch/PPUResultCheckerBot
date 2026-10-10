@@ -1,0 +1,92 @@
+College Code,College,UG Voc,Subject,SubjectCode
+201,"A.N. College, Patna",B.B.M.,Business Management,4007
+201,"A.N. College, Patna",B.C.A.,Computer Application,4008
+201,"A.N. College, Patna",B.E.W.M.,Environmental & Water Management,4011
+201,"A.N. College, Patna",B.Sc. Biotechnology,Bio-technology,4003
+201,"A.N. College, Patna",B.Sc. IT,Information Technology,4005
+202,"A.N.S. College, Barh",B.B.M.,Business Management,4007
+202,"A.N.S. College, Barh",B.C.A.,Computer Application,4008
+202,"A.N.S. College, Barh",B.Sc. Biotechnology,Bio-technology,4003
+202,"A.N.S. College, Barh",B.Sc. IT,Information Technology,4005
+203,"B.D. College, Patna",B.B.M.,Business Management,4007
+203,"B.D. College, Patna",B.C.A.,Computer Application,4008
+203,"B.D. College, Patna",B.I.M.B.,Industrial Micro Biology,4014
+203,"B.D. College, Patna",B.Sc. Biotechnology,Bio-technology,4003
+203,"B.D. College, Patna",B.Sc. IT,Information Technology,4005
+204,"B.S. College, Danapur",B.B.M.,Business Management,4007
+204,"B.S. College, Danapur",B.C.A.,Computer Application,4008
+204,"B.S. College, Danapur",B.Sc. IT,Information Technology,4005
+204,"B.S. College, Danapur",B.T.T.M.,Tourism and Travel Management,4021
+205,"College of Commerce, Arts and Science, Patna",B.B.M.,Business Management,4007
+205,"College of Commerce, Arts and Science, Patna",B.C.A.,Computer Application,4008
+205,"College of Commerce, Arts and Science, Patna",B.Sc. Biotechnology,Bio-technology,4003
+205,"College of Commerce, Arts and Science, Patna",B.Sc. IT,Information Technology,4005
+205,"College of Commerce, Arts and Science, Patna",BIOCHM,Bio-chemistry,4002
+206,"G.J. College, Rambagh, Bihta",B.B.M.,Business Management,4007
+206,"G.J. College, Rambagh, Bihta",B.C.A.,Computer Application,4008
+206,"G.J. College, Rambagh, Bihta",B.Sc. IT,Information Technology,4005
+207,"Ganga Devi Mahila Mahavidalaya, Patna",B.B.M.,Business Management,4007
+207,"Ganga Devi Mahila Mahavidalaya, Patna",B.C.A.,Computer Application,4008
+208,"J.D. Womens College, Patna",B.B.M.,Business Management,4007
+208,"J.D. Womens College, Patna",B.C.A.,Computer Application,4008
+209,"Jagat Narayan Lal College,Khagaul, Patna",B.C.A.,Computer Application,4008
+209,"Jagat Narayan Lal College,Khagaul, Patna",B.Sc. Biotechnology,Bio-technology,4003
+209,"Jagat Narayan Lal College,Khagaul, Patna",B.Sc. IT,Information Technology,4005
+210,"Kisan College, Nalanda",B.B.M.,Business Management,4007
+210,"Kisan College, Nalanda",B.C.A.,Computer Application,4008
+210,"Kisan College, Nalanda",B.Sc. IT,Information Technology,4005
+211,"M.M. College, Bikram",B.C.A.,Computer Application,4008
+212,"Mahila College, Khagaul",B.B.M.,Business Management,4007
+213,"Malti Dhari College, Naubatpur",B.C.A.,Computer Application,4008
+214,"Nalanda College, Biharsharif",B.B.M.,Business Management,4007
+214,"Nalanda College, Biharsharif",B.C.A.,Computer Application,4008
+214,"Nalanda College, Biharsharif",B.Sc. Biotechnology,Bio-technology,4003
+215,"Nalanda Mahila College, Biharsharif",B.B.M.,Business Management,4007
+215,"Nalanda Mahila College, Biharsharif",B.C.A.,Computer Application,4008
+216,"R.L.S.Y. College, Bakhtiarpur",B.B.M.,Business Management,4007
+216,"R.L.S.Y. College, Bakhtiarpur",B.C.A.,Computer Application,4008
+216,"R.L.S.Y. College, Bakhtiarpur",B.Sc. IT,Information Technology,4005
+217,"R.P.M. College, Patna City",B.B.M.,Business Management,4007
+218,"Ram Krishna Dwarika College, Patna",B.A.S.P.M,"Advertisement, Sales Promotion and Sales Management",4001
+218,"Ram Krishna Dwarika College, Patna",B.B.M.,Business Management,4007
+218,"Ram Krishna Dwarika College, Patna",B.C.A.,Computer Application,4008
+218,"Ram Krishna Dwarika College, Patna",B.Sc. IT,Information Technology,4005
+218,"Ram Krishna Dwarika College, Patna",B.T.T.M.,Tourism and Travel Management,4021
+220,"S.M.D. College, Punpun",B.C.A.,Computer Application,4008
+220,"S.M.D. College, Punpun",B.Sc. IT,Information Technology,4005
+221,"Sri Arvind Mahila College, Patna",B.B.M.,Business Management,4007
+221,"Sri Arvind Mahila College, Patna",B.C.A.,Computer Application,4008
+222,"Sri Guru Gobind Singh College, Patna Saheb",B.B.M.,Business Management,4007
+222,"Sri Guru Gobind Singh College, Patna Saheb",B.C.A.,Computer Application,4008
+223,"S.P.M College, Nalanda",B.C.A.,Computer Application,4008
+224,"S.U. College, Hilsa",B.C.A.,Computer Application,4008
+224,"S.U. College, Hilsa",B.Sc. Biotechnology,Bio-technology,4003
+225,"T.P.S College, Patna",B.B.M.,Business Management,4007
+225,"T.P.S College, Patna",B.C.A.,Computer Application,4008
+225,"T.P.S College, Patna",B.Sc. Biotechnology,Bio-technology,4003
+226,"Govt. Womens College, Gardanibagh, Patna",B.C.A.,Computer Application,4008
+231,"Government Degree College, Rajgir, Nalanda",B.B.M.,Business Management,4007
+231,"Government Degree College, Rajgir, Nalanda",B.C.A.,Computer Application,4008
+231,"Government Degree College, Rajgir, Nalanda",B.Sc. IT,Information Technology,4005
+439,"Arcade Business College, Rajendra Nagar, Patna",B.B.M.,Business Management,4007
+439,"Arcade Business College, Rajendra Nagar, Patna",B.C.A.,Computer Application,4008
+440,"ARCADE BUSSINESS COLLEGE,KHAGAUL, Patna",B.B.M.,Business Management,4007
+440,"ARCADE BUSSINESS COLLEGE,KHAGAUL, Patna",B.C.A.,Computer Application,4008
+444,"Swatantrata Senani Shankarlal Agrawal Prabandhan Sah Takniki Mahavidyalaya , Patna",B.B.M.,Business Management,4007
+444,"Swatantrata Senani Shankarlal Agrawal Prabandhan Sah Takniki Mahavidyalaya , Patna",B.C.A.,Computer Application,4008
+444,"Swatantrata Senani Shankarlal Agrawal Prabandhan Sah Takniki Mahavidyalaya , Patna",B.Sc. IT,Information Technology,4005
+445,"Catalyst College, Kulharia Complex, Ashok Rajpath, Patna",B.B.M.,Business Management,4007
+445,"Catalyst College, Kulharia Complex, Ashok Rajpath, Patna",B.C.A.,Computer Application,4008
+445,"Catalyst College, Kulharia Complex, Ashok Rajpath, Patna",B.Sc. IT,Information Technology,4005
+446,"International Business College, Karmalichak, Patna",B.B.M.,Business Management,4007
+446,"International Business College, Karmalichak, Patna",B.C.A.,Computer Application,4008
+447,"M.G.M. College, Kankarbagh, Patna",B.B.M.,Business Management,4007
+447,"M.G.M. College, Kankarbagh, Patna",B.C.A.,Computer Application,4008
+447,"M.G.M. College, Kankarbagh, Patna",B.Sc. IT,Information Technology,4005
+452,"Catalyst Institute of Management and Advanced Global Excellence, Patna",B.B.M.,Business Management,4007
+452,"Catalyst Institute of Management and Advanced Global Excellence, Patna",B.C.A.,Computer Application,4008
+452,"Catalyst Institute of Management and Advanced Global Excellence, Patna",B.Sc. IT,Information Technology,4005
+457,"OXFORD BUSINESS COLLEGE,Kachhuara,Patna",B.B.M.,Business Management,4007
+457,"OXFORD BUSINESS COLLEGE,Kachhuara,Patna",B.C.A.,Computer Application,4008
+458,"NIBHA INSTITUE OF PHARMACEUTICAL,SCIENCE,Rajgir,Nalanda",B.B.M.,Business Management,4007
+458,"NIBHA INSTITUE OF PHARMACEUTICAL,SCIENCE,Rajgir,Nalanda",B.C.A.,Computer Application,4008
