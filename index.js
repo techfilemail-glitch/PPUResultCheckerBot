@@ -6,7 +6,7 @@ const path = require("path");
 const os = require("os");
 const { PDFDocument } = require("pdf-lib");
 const subject = require('./bulk/subject');
-const college = require('./bulk/subject');
+const college = require('./bulk/college');
 
 const profiles = require("./profile-store");
 const studentProfile = require("./student-profile");
