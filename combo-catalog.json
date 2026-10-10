@@ -1,0 +1,3213 @@
+{
+ "sessions": [
+  {
+   "value": "Paramedical Result Session 2018-2021&22",
+   "text": "Paramedical Result Session 2018-2021&22"
+  },
+  {
+   "value": "Paramedical Result Session 2019-2022&23",
+   "text": "Paramedical Result Session 2019-2022&23"
+  },
+  {
+   "value": "Paramedical Result Session 2020-22",
+   "text": "Paramedical Result Session 2020-22"
+  },
+  {
+   "value": "Paramedical Result Session 2020-23",
+   "text": "Paramedical Result Session 2020-23"
+  },
+  {
+   "value": "Paramedical Result Session 2020-24",
+   "text": "Paramedical Result Session 2020-24"
+  },
+  {
+   "value": "Paramedical Result Session 2021-23",
+   "text": "Paramedical Result Session 2021-23"
+  },
+  {
+   "value": "Paramedical Result Session 2021-24",
+   "text": "Paramedical Result Session 2021-24"
+  },
+  {
+   "value": "Paramedical Result Session 2021-25",
+   "text": "Paramedical Result Session 2021-25"
+  },
+  {
+   "value": "Paramedical Result Session 2022-24",
+   "text": "Paramedical Result Session 2022-24"
+  },
+  {
+   "value": "Paramedical Result Session 2022-25",
+   "text": "Paramedical Result Session 2022-25"
+  },
+  {
+   "value": "Paramedical Result Session 2022-26",
+   "text": "Paramedical Result Session 2022-26"
+  },
+  {
+   "value": "Provisional (Year-2024)",
+   "text": "Provisional (Year-2024)"
+  },
+  {
+   "value": "Provisional (Year-2025)",
+   "text": "Provisional (Year-2025)"
+  },
+  {
+   "value": "Provisional (Year-2026)",
+   "text": "Provisional (Year-2026)"
+  },
+  {
+   "value": "SEMESTER(2018-20&2018-21)",
+   "text": "SEMESTER(2018-20&2018-21)"
+  },
+  {
+   "value": "SEMESTER(2019-21&2019-22)",
+   "text": "SEMESTER(2019-21&2019-22)"
+  },
+  {
+   "value": "SEMESTER(2020-22)",
+   "text": "SEMESTER(2020-22)"
+  },
+  {
+   "value": "SEMESTER(2021-23)",
+   "text": "SEMESTER(2021-23)"
+  },
+  {
+   "value": "SEMESTER(2022-24)",
+   "text": "SEMESTER(2022-24)"
+  },
+  {
+   "value": "SEMESTER(2023-25)",
+   "text": "SEMESTER(2023-25)"
+  },
+  {
+   "value": "SEMESTER(2024-26)",
+   "text": "SEMESTER(2024-26)"
+  },
+  {
+   "value": "SEMESTER(2025-27)",
+   "text": "SEMESTER(2025-27)"
+  },
+  {
+   "value": "YEAR-2019",
+   "text": "YEAR-2019"
+  },
+  {
+   "value": "YEAR-2020",
+   "text": "YEAR-2020"
+  },
+  {
+   "value": "YEAR-2021",
+   "text": "YEAR-2021"
+  },
+  {
+   "value": "YEAR-2022",
+   "text": "YEAR-2022"
+  },
+  {
+   "value": "YEAR-2023",
+   "text": "YEAR-2023"
+  },
+  {
+   "value": "YEAR-2024",
+   "text": "YEAR-2024"
+  },
+  {
+   "value": "YEAR-2025",
+   "text": "YEAR-2025"
+  },
+  {
+   "value": "YEAR-2026",
+   "text": "YEAR-2026"
+  }
+ ],
+ "sessionsT": 1791602047215,
+ "exams": {
+  "YEAR-2026": {
+   "t": 1791602047216,
+   "list": [
+    {
+     "value": "Annual",
+     "text": "Annual"
+    },
+    {
+     "value": "General",
+     "text": "General"
+    },
+    {
+     "value": "Regular",
+     "text": "Regular"
+    },
+    {
+     "value": "UG",
+     "text": "UG"
+    },
+    {
+     "value": "Vocational",
+     "text": "Vocational"
+    }
+   ]
+  },
+  "YEAR-2024": {
+   "t": 1791602047216,
+   "list": [
+    {
+     "value": "Annual",
+     "text": "Annual"
+    },
+    {
+     "value": "General",
+     "text": "General"
+    },
+    {
+     "value": "Regular",
+     "text": "Regular"
+    },
+    {
+     "value": "UG",
+     "text": "UG"
+    },
+    {
+     "value": "Vocational",
+     "text": "Vocational"
+    }
+   ]
+  },
+  "Provisional (Year-2024)": {
+   "t": 1791602047215,
+   "list": [
+    {
+     "value": "Vocational",
+     "text": "Vocational"
+    }
+   ]
+  },
+  "SEMESTER(2024-26)": {
+   "t": 1791602047216,
+   "list": [
+    {
+     "value": "PG (Regular)",
+     "text": "PG (Regular)"
+    },
+    {
+     "value": "PG (Vocational)",
+     "text": "PG (Vocational)"
+    }
+   ]
+  },
+  "YEAR-2025": {
+   "t": 1791602047216,
+   "list": [
+    {
+     "value": "Annual",
+     "text": "Annual"
+    },
+    {
+     "value": "General",
+     "text": "General"
+    },
+    {
+     "value": "Regular",
+     "text": "Regular"
+    },
+    {
+     "value": "UG",
+     "text": "UG"
+    },
+    {
+     "value": "Vocational",
+     "text": "Vocational"
+    }
+   ]
+  },
+  "Provisional (Year-2025)": {
+   "t": 1791602047216,
+   "list": [
+    {
+     "value": "Annual",
+     "text": "Annual"
+    },
+    {
+     "value": "Regular",
+     "text": "Regular"
+    },
+    {
+     "value": "Vocational",
+     "text": "Vocational"
+    }
+   ]
+  },
+  "SEMESTER(2025-27)": {
+   "t": 1791602047216,
+   "list": [
+    {
+     "value": "PG (Regular)",
+     "text": "PG (Regular)"
+    },
+    {
+     "value": "PG (Vocational)",
+     "text": "PG (Vocational)"
+    }
+   ]
+  },
+  "Paramedical Result Session 2022-25": {
+   "t": 1791602047215,
+   "list": [
+    {
+     "value": "Yearly",
+     "text": "Yearly"
+    }
+   ]
+  },
+  "Paramedical Result Session 2022-24": {
+   "t": 1791602047215,
+   "list": [
+    {
+     "value": "Yearly",
+     "text": "Yearly"
+    }
+   ]
+  },
+  "SEMESTER(2022-24)": {
+   "t": 1791602047216,
+   "list": [
+    {
+     "value": "PG (Regular)",
+     "text": "PG (Regular)"
+    },
+    {
+     "value": "PG (VOCATIONAL)",
+     "text": "PG (VOCATIONAL)"
+    }
+   ]
+  },
+  "SEMESTER(2023-25)": {
+   "t": 1791602047216,
+   "list": [
+    {
+     "value": "PG (Regular)",
+     "text": "PG (Regular)"
+    },
+    {
+     "value": "PG (Vocational)",
+     "text": "PG (Vocational)"
+    }
+   ]
+  },
+  "YEAR-2022": {
+   "t": 1791602047216,
+   "list": [
+    {
+     "value": "Annual",
+     "text": "Annual"
+    },
+    {
+     "value": "General",
+     "text": "General"
+    },
+    {
+     "value": "Regular",
+     "text": "Regular"
+    },
+    {
+     "value": "Vocational",
+     "text": "Vocational"
+    }
+   ]
+  },
+  "YEAR-2023": {
+   "t": 1791602047216,
+   "list": [
+    {
+     "value": "Annual",
+     "text": "Annual"
+    },
+    {
+     "value": "General",
+     "text": "General"
+    },
+    {
+     "value": "Regular",
+     "text": "Regular"
+    },
+    {
+     "value": "Vocational",
+     "text": "Vocational"
+    }
+   ]
+  },
+  "Paramedical Result Session 2022-26": {
+   "t": 1791602047215,
+   "list": [
+    {
+     "value": "Semester",
+     "text": "Semester"
+    },
+    {
+     "value": "Yearly",
+     "text": "Yearly"
+    }
+   ]
+  },
+  "Provisional (Year-2026)": {
+   "t": 1791602047216,
+   "list": [
+    {
+     "value": "Annual",
+     "text": "Annual"
+    },
+    {
+     "value": "Regular",
+     "text": "Regular"
+    },
+    {
+     "value": "Vocational",
+     "text": "Vocational"
+    }
+   ]
+  },
+  "Paramedical Result Session 2021-24": {
+   "t": 1791449999523,
+   "list": [
+    {
+     "value": "Yearly",
+     "text": "Yearly"
+    }
+   ]
+  },
+  "YEAR-2021": {
+   "t": 1791449999523,
+   "list": [
+    {
+     "value": "Annual",
+     "text": "Annual"
+    },
+    {
+     "value": "General",
+     "text": "General"
+    },
+    {
+     "value": "Regular",
+     "text": "Regular"
+    },
+    {
+     "value": "Vocational",
+     "text": "Vocational"
+    }
+   ]
+  },
+  "SEMESTER(2021-23)": {
+   "t": 1791449999523,
+   "list": [
+    {
+     "value": "Annual",
+     "text": "Annual"
+    },
+    {
+     "value": "General",
+     "text": "General"
+    },
+    {
+     "value": "PG (Regular)",
+     "text": "PG (Regular)"
+    },
+    {
+     "value": "PG (VOCATIONAL)",
+     "text": "PG (VOCATIONAL)"
+    },
+    {
+     "value": "Regular",
+     "text": "Regular"
+    }
+   ]
+  },
+  "Paramedical Result Session 2021-23": {
+   "t": 1791449999523,
+   "list": [
+    {
+     "value": "Yearly",
+     "text": "Yearly"
+    }
+   ]
+  },
+  "Paramedical Result Session 2021-25": {
+   "t": 1791449999523,
+   "list": [
+    {
+     "value": "Semester",
+     "text": "Semester"
+    },
+    {
+     "value": "Yearly",
+     "text": "Yearly"
+    }
+   ]
+  },
+  "Paramedical Result Session 2020-23": {
+   "t": 1791449999523,
+   "list": [
+    {
+     "value": "Annual",
+     "text": "Annual"
+    },
+    {
+     "value": "Semester",
+     "text": "Semester"
+    },
+    {
+     "value": "Yearly",
+     "text": "Yearly"
+    }
+   ]
+  },
+  "YEAR-2020": {
+   "t": 1791449999523,
+   "list": [
+    {
+     "value": "Annual",
+     "text": "Annual"
+    },
+    {
+     "value": "BLIS",
+     "text": "BLIS"
+    },
+    {
+     "value": "General",
+     "text": "General"
+    },
+    {
+     "value": "MLIS",
+     "text": "MLIS"
+    },
+    {
+     "value": "Regular",
+     "text": "Regular"
+    },
+    {
+     "value": "Vocational",
+     "text": "Vocational"
+    }
+   ]
+  },
+  "SEMESTER(2020-22)": {
+   "t": 1791449999523,
+   "list": [
+    {
+     "value": "PG (Regular)",
+     "text": "PG (Regular)"
+    },
+    {
+     "value": "PG (VOCATIONAL)",
+     "text": "PG (VOCATIONAL)"
+    }
+   ]
+  },
+  "Paramedical Result Session 2020-22": {
+   "t": 1791449999523,
+   "list": [
+    {
+     "value": "Annual",
+     "text": "Annual"
+    },
+    {
+     "value": "Semester",
+     "text": "Semester"
+    },
+    {
+     "value": "Yearly",
+     "text": "Yearly"
+    }
+   ]
+  },
+  "Paramedical Result Session 2020-24": {
+   "t": 1791449999523,
+   "list": [
+    {
+     "value": "Annual",
+     "text": "Annual"
+    },
+    {
+     "value": "Semester",
+     "text": "Semester"
+    },
+    {
+     "value": "Yearly",
+     "text": "Yearly"
+    }
+   ]
+  },
+  "YEAR-2019": {
+   "t": 1791449999523,
+   "list": [
+    {
+     "value": "Annual",
+     "text": "Annual"
+    },
+    {
+     "value": "B.Ed. Year-I (Session 2018-2020)",
+     "text": "B.Ed. Year-I (Session 2018-2020)"
+    },
+    {
+     "value": "Regular",
+     "text": "Regular"
+    },
+    {
+     "value": "UG(Vocational)",
+     "text": "UG(Vocational)"
+    }
+   ]
+  },
+  "Paramedical Result Session 2019-2022&23": {
+   "t": 1791449999523,
+   "list": [
+    {
+     "value": "Annual",
+     "text": "Annual"
+    },
+    {
+     "value": "Semester",
+     "text": "Semester"
+    },
+    {
+     "value": "Yearly",
+     "text": "Yearly"
+    }
+   ]
+  },
+  "SEMESTER(2019-21&2019-22)": {
+   "t": 1791449999523,
+   "list": [
+    {
+     "value": "PG (Regular)",
+     "text": "PG (Regular)"
+    },
+    {
+     "value": "PG (VOCATIONAL)",
+     "text": "PG (VOCATIONAL)"
+    }
+   ]
+  },
+  "Paramedical Result Session 2018-2021&22": {
+   "t": 1791449999523,
+   "list": [
+    {
+     "value": "Annual",
+     "text": "Annual"
+    },
+    {
+     "value": "Semester",
+     "text": "Semester"
+    },
+    {
+     "value": "Yearly",
+     "text": "Yearly"
+    }
+   ]
+  },
+  "SEMESTER(2018-20&2018-21)": {
+   "t": 1791449999523,
+   "list": [
+    {
+     "value": "PG (Regular)",
+     "text": "PG (Regular)"
+    },
+    {
+     "value": "PG (VOCATIONAL)",
+     "text": "PG (VOCATIONAL)"
+    }
+   ]
+  }
+ },
+ "courses": {
+  "YEAR-2026|||Annual": {
+   "t": 1791602047221,
+   "list": [
+    {
+     "value": "BLIS",
+     "text": "BLIS"
+    },
+    {
+     "value": "MLIS",
+     "text": "MLIS"
+    },
+    {
+     "value": "PGDCR-1",
+     "text": "PGDCR-1"
+    },
+    {
+     "value": "PGDCR-2",
+     "text": "PGDCR-2"
+    },
+    {
+     "value": "PHD",
+     "text": "PHD"
+    }
+   ]
+  },
+  "YEAR-2026|||UG": {
+   "t": 1791602047221,
+   "list": [
+    {
+     "value": "BA(SEM-I)",
+     "text": "BA(SEM-I)"
+    },
+    {
+     "value": "BA(SEM-II)",
+     "text": "BA(SEM-II)"
+    },
+    {
+     "value": "BA(SEM-III)",
+     "text": "BA(SEM-III)"
+    },
+    {
+     "value": "BA(SEM-IV)",
+     "text": "BA(SEM-IV)"
+    },
+    {
+     "value": "BA(SEM-V)",
+     "text": "BA(SEM-V)"
+    },
+    {
+     "value": "BA(SEM-VI)",
+     "text": "BA(SEM-VI)"
+    },
+    {
+     "value": "BCOM(SEM-I)",
+     "text": "BCOM(SEM-I)"
+    },
+    {
+     "value": "BCOM(SEM-II)",
+     "text": "BCOM(SEM-II)"
+    },
+    {
+     "value": "BCOM(SEM-III)",
+     "text": "BCOM(SEM-III)"
+    },
+    {
+     "value": "BCOM(SEM-IV)",
+     "text": "BCOM(SEM-IV)"
+    },
+    {
+     "value": "BCOM(SEM-V)",
+     "text": "BCOM(SEM-V)"
+    },
+    {
+     "value": "BCOM(SEM-VI)",
+     "text": "BCOM(SEM-VI)"
+    },
+    {
+     "value": "BSC(SEM-I)",
+     "text": "BSC(SEM-I)"
+    },
+    {
+     "value": "BSC(SEM-II)",
+     "text": "BSC(SEM-II)"
+    },
+    {
+     "value": "BSC(SEM-III)",
+     "text": "BSC(SEM-III)"
+    },
+    {
+     "value": "BSC(SEM-IV)",
+     "text": "BSC(SEM-IV)"
+    },
+    {
+     "value": "BSC(SEM-V)",
+     "text": "BSC(SEM-V)"
+    },
+    {
+     "value": "BSC(SEM-VI)",
+     "text": "BSC(SEM-VI)"
+    }
+   ]
+  },
+  "YEAR-2024|||UG": {
+   "t": 1791602047220,
+   "list": [
+    {
+     "value": "BA(SEM-I)",
+     "text": "BA(SEM-I)"
+    },
+    {
+     "value": "BA(SEM-II)",
+     "text": "BA(SEM-II)"
+    },
+    {
+     "value": "BCOM(SEM-I)",
+     "text": "BCOM(SEM-I)"
+    },
+    {
+     "value": "BCOM(SEM-II)",
+     "text": "BCOM(SEM-II)"
+    },
+    {
+     "value": "BSC(SEM-I)",
+     "text": "BSC(SEM-I)"
+    },
+    {
+     "value": "BSC(SEM-II)",
+     "text": "BSC(SEM-II)"
+    }
+   ]
+  },
+  "YEAR-2025|||UG": {
+   "t": 1791602047220,
+   "list": [
+    {
+     "value": "BA(SEM-I)",
+     "text": "BA(SEM-I)"
+    },
+    {
+     "value": "BA(SEM-II)",
+     "text": "BA(SEM-II)"
+    },
+    {
+     "value": "BA(SEM-III)",
+     "text": "BA(SEM-III)"
+    },
+    {
+     "value": "BA(SEM-IV)",
+     "text": "BA(SEM-IV)"
+    },
+    {
+     "value": "BCOM(SEM-I)",
+     "text": "BCOM(SEM-I)"
+    },
+    {
+     "value": "BCOM(SEM-II)",
+     "text": "BCOM(SEM-II)"
+    },
+    {
+     "value": "BCOM(SEM-III)",
+     "text": "BCOM(SEM-III)"
+    },
+    {
+     "value": "BCOM(SEM-IV)",
+     "text": "BCOM(SEM-IV)"
+    },
+    {
+     "value": "BSC(SEM-I)",
+     "text": "BSC(SEM-I)"
+    },
+    {
+     "value": "BSC(SEM-II)",
+     "text": "BSC(SEM-II)"
+    },
+    {
+     "value": "BSC(SEM-III)",
+     "text": "BSC(SEM-III)"
+    },
+    {
+     "value": "BSC(SEM-IV)",
+     "text": "BSC(SEM-IV)"
+    }
+   ]
+  },
+  "Paramedical Result Session 2022-25|||Yearly": {
+   "t": 1791602047217,
+   "list": [
+    {
+     "value": "BMLT1",
+     "text": "BMLT1"
+    },
+    {
+     "value": "BMLT1(Promoted_24)",
+     "text": "BMLT1(Promoted_24)"
+    },
+    {
+     "value": "BMLT1(Promoted_Feb_26)",
+     "text": "BMLT1(Promoted_Feb_26)"
+    },
+    {
+     "value": "BMLT1(Promoted_Sep_25)",
+     "text": "BMLT1(Promoted_Sep_25)"
+    },
+    {
+     "value": "BMLT2",
+     "text": "BMLT2"
+    },
+    {
+     "value": "BMLT2(Promoted_25)",
+     "text": "BMLT2(Promoted_25)"
+    },
+    {
+     "value": "BMLT2(Promoted_Sep_25)",
+     "text": "BMLT2(Promoted_Sep_25)"
+    },
+    {
+     "value": "BMLT3",
+     "text": "BMLT3"
+    },
+    {
+     "value": "BMLT3(Promoted_Feb_26)",
+     "text": "BMLT3(Promoted_Feb_26)"
+    },
+    {
+     "value": "BMRIT1",
+     "text": "BMRIT1"
+    },
+    {
+     "value": "BMRIT2",
+     "text": "BMRIT2"
+    },
+    {
+     "value": "BMRIT3",
+     "text": "BMRIT3"
+    }
+   ]
+  },
+  "Paramedical Result Session 2022-24|||Yearly": {
+   "t": 1791602047217,
+   "list": [
+    {
+     "value": "MOT1",
+     "text": "MOT1"
+    },
+    {
+     "value": "MOT1(Promoted_24)",
+     "text": "MOT1(Promoted_24)"
+    },
+    {
+     "value": "MOT2",
+     "text": "MOT2"
+    },
+    {
+     "value": "MOT2(Promoted_25)",
+     "text": "MOT2(Promoted_25)"
+    },
+    {
+     "value": "MPT1",
+     "text": "MPT1"
+    },
+    {
+     "value": "MPT1(Promoted_24)",
+     "text": "MPT1(Promoted_24)"
+    },
+    {
+     "value": "MPT2",
+     "text": "MPT2"
+    }
+   ]
+  },
+  "Paramedical Result Session 2022-26|||Semester": {
+   "t": 1791602047217,
+   "list": [
+    {
+     "value": "BPT-1SEM",
+     "text": "BPT-1SEM"
+    },
+    {
+     "value": "BPT-1SEM(Promoted_24)",
+     "text": "BPT-1SEM(Promoted_24)"
+    },
+    {
+     "value": "BPT-1SEM(Promoted_25)",
+     "text": "BPT-1SEM(Promoted_25)"
+    },
+    {
+     "value": "BPT-2SEM",
+     "text": "BPT-2SEM"
+    },
+    {
+     "value": "BPT-2SEM(Promoted_25)",
+     "text": "BPT-2SEM(Promoted_25)"
+    },
+    {
+     "value": "BPT-2SEM(Promoted_Feb_26)",
+     "text": "BPT-2SEM(Promoted_Feb_26)"
+    },
+    {
+     "value": "BPT-2SEM(Promoted_Sep_25)",
+     "text": "BPT-2SEM(Promoted_Sep_25)"
+    },
+    {
+     "value": "BPT-3SEM",
+     "text": "BPT-3SEM"
+    },
+    {
+     "value": "BPT-3SEM(Promoted_25)",
+     "text": "BPT-3SEM(Promoted_25)"
+    },
+    {
+     "value": "BPT-3SEM(Promoted_Feb_26)",
+     "text": "BPT-3SEM(Promoted_Feb_26)"
+    },
+    {
+     "value": "BPT-4SEM",
+     "text": "BPT-4SEM"
+    },
+    {
+     "value": "BPT-4SEM(Promoted_Feb_26)",
+     "text": "BPT-4SEM(Promoted_Feb_26)"
+    },
+    {
+     "value": "BPT-5SEM",
+     "text": "BPT-5SEM"
+    },
+    {
+     "value": "BPT-5SEM(Promoted_Aug_2026",
+     "text": "BPT-5SEM(Promoted_Aug_2026"
+    },
+    {
+     "value": "BPT-6SEM",
+     "text": "BPT-6SEM"
+    }
+   ]
+  },
+  "Paramedical Result Session 2022-26|||Yearly": {
+   "t": 1791602047217,
+   "list": [
+    {
+     "value": "BASLP1",
+     "text": "BASLP1"
+    },
+    {
+     "value": "BASLP1(Promoted_24)",
+     "text": "BASLP1(Promoted_24)"
+    },
+    {
+     "value": "BASLP1(Promoted_Aug_26)",
+     "text": "BASLP1(Promoted_Aug_26)"
+    },
+    {
+     "value": "BASLP2",
+     "text": "BASLP2"
+    },
+    {
+     "value": "BASLP2(Promoted_Dec_24)",
+     "text": "BASLP2(Promoted_Dec_24)"
+    },
+    {
+     "value": "BASLP3",
+     "text": "BASLP3"
+    },
+    {
+     "value": "BOOP1",
+     "text": "BOOP1"
+    },
+    {
+     "value": "BOOP2",
+     "text": "BOOP2"
+    },
+    {
+     "value": "BOOP3",
+     "text": "BOOP3"
+    },
+    {
+     "value": "BOOP4",
+     "text": "BOOP4"
+    }
+   ]
+  },
+  "Provisional (Year-2024)|||Vocational": {
+   "t": 1791602047217,
+   "list": [
+    {
+     "value": "BED",
+     "text": "BED"
+    },
+    {
+     "value": "PART-3",
+     "text": "PART-3"
+    },
+    {
+     "value": "PG (Session 2022-24 )",
+     "text": "PG (Session 2022-24 )"
+    }
+   ]
+  },
+  "Provisional (Year-2025)|||Regular": {
+   "t": 1791602047218,
+   "list": [
+    {
+     "value": "Arts",
+     "text": "Arts"
+    },
+    {
+     "value": "Commerce",
+     "text": "Commerce"
+    },
+    {
+     "value": "PG (Session 2023-25)",
+     "text": "PG (Session 2023-25)"
+    },
+    {
+     "value": "Science",
+     "text": "Science"
+    }
+   ]
+  },
+  "YEAR-2025|||Regular": {
+   "t": 1791602047220,
+   "list": [
+    {
+     "value": "B.A.Hons.(Part-I)",
+     "text": "B.A.Hons.(Part-I)"
+    },
+    {
+     "value": "B.A.Hons.(Part-II)",
+     "text": "B.A.Hons.(Part-II)"
+    },
+    {
+     "value": "B.A.Hons.(Part-III)",
+     "text": "B.A.Hons.(Part-III)"
+    },
+    {
+     "value": "B.Com(Part-I)",
+     "text": "B.Com(Part-I)"
+    },
+    {
+     "value": "B.Com(Part-II)",
+     "text": "B.Com(Part-II)"
+    },
+    {
+     "value": "B.Com(Part-III)",
+     "text": "B.Com(Part-III)"
+    },
+    {
+     "value": "B.Sc.Hons.(Part-I)",
+     "text": "B.Sc.Hons.(Part-I)"
+    },
+    {
+     "value": "B.Sc.Hons.(Part-II)",
+     "text": "B.Sc.Hons.(Part-II)"
+    },
+    {
+     "value": "B.Sc.Hons.(Part-III)",
+     "text": "B.Sc.Hons.(Part-III)"
+    }
+   ]
+  },
+  "YEAR-2026|||General": {
+   "t": 1791602047221,
+   "list": [
+    {
+     "value": "BA-II",
+     "text": "BA-II"
+    },
+    {
+     "value": "BA-III",
+     "text": "BA-III"
+    },
+    {
+     "value": "BCOM-III",
+     "text": "BCOM-III"
+    },
+    {
+     "value": "BSC-III",
+     "text": "BSC-III"
+    }
+   ]
+  },
+  "YEAR-2026|||Regular": {
+   "t": 1791602047221,
+   "list": [
+    {
+     "value": "B.A.Hons.(Part-II)",
+     "text": "B.A.Hons.(Part-II)"
+    },
+    {
+     "value": "B.A.Hons.(Part-III)",
+     "text": "B.A.Hons.(Part-III)"
+    },
+    {
+     "value": "B.Com(Part-II)",
+     "text": "B.Com(Part-II)"
+    },
+    {
+     "value": "B.Com(Part-III)",
+     "text": "B.Com(Part-III)"
+    },
+    {
+     "value": "B.Sc.Hons.(Part-II)",
+     "text": "B.Sc.Hons.(Part-II)"
+    },
+    {
+     "value": "B.Sc.Hons.(Part-III)",
+     "text": "B.Sc.Hons.(Part-III)"
+    }
+   ]
+  },
+  "YEAR-2026|||Vocational": {
+   "t": 1791602047221,
+   "list": [
+    {
+     "value": "BALLB3",
+     "text": "BALLB3"
+    },
+    {
+     "value": "BALLB4",
+     "text": "BALLB4"
+    },
+    {
+     "value": "BALLB5",
+     "text": "BALLB5"
+    },
+    {
+     "value": "BED-I",
+     "text": "BED-I"
+    },
+    {
+     "value": "BED-II",
+     "text": "BED-II"
+    },
+    {
+     "value": "BPED-II",
+     "text": "BPED-II"
+    },
+    {
+     "value": "LLB2",
+     "text": "LLB2"
+    },
+    {
+     "value": "LLB3",
+     "text": "LLB3"
+    },
+    {
+     "value": "Part-I",
+     "text": "Part-I"
+    },
+    {
+     "value": "Part-II",
+     "text": "Part-II"
+    },
+    {
+     "value": "Part-III",
+     "text": "Part-III"
+    }
+   ]
+  },
+  "Provisional (Year-2025)|||Vocational": {
+   "t": 1791602047218,
+   "list": [
+    {
+     "value": "BED",
+     "text": "BED"
+    },
+    {
+     "value": "PART-3",
+     "text": "PART-3"
+    },
+    {
+     "value": "PG (Session 2023-25 )",
+     "text": "PG (Session 2023-25 )"
+    }
+   ]
+  },
+  "Provisional (Year-2026)|||Annual": {
+   "t": 1791602047218,
+   "list": [
+    {
+     "value": "BLIS",
+     "text": "BLIS"
+    },
+    {
+     "value": "MLIS",
+     "text": "MLIS"
+    }
+   ]
+  },
+  "Provisional (Year-2026)|||Regular": {
+   "t": 1791602047218,
+   "list": [
+    {
+     "value": "PG (Session 2024-26)",
+     "text": "PG (Session 2024-26)"
+    }
+   ]
+  },
+  "Provisional (Year-2026)|||Vocational": {
+   "t": 1791602047218,
+   "list": [
+    {
+     "value": "BED",
+     "text": "BED"
+    },
+    {
+     "value": "LLB",
+     "text": "LLB"
+    },
+    {
+     "value": "PG (Session 2024-26 )",
+     "text": "PG (Session 2024-26 )"
+    }
+   ]
+  },
+  "SEMESTER(2022-24)|||PG (Regular)": {
+   "t": 1791602047218,
+   "list": [
+    {
+     "value": "SEM-1",
+     "text": "SEM-1"
+    },
+    {
+     "value": "SEM-2",
+     "text": "SEM-2"
+    },
+    {
+     "value": "SEM-3",
+     "text": "SEM-3"
+    },
+    {
+     "value": "SEM-4",
+     "text": "SEM-4"
+    }
+   ]
+  },
+  "SEMESTER(2022-24)|||PG (VOCATIONAL)": {
+   "t": 1791602047218,
+   "list": [
+    {
+     "value": "MED-I",
+     "text": "MED-I"
+    },
+    {
+     "value": "MED-II",
+     "text": "MED-II"
+    },
+    {
+     "value": "MED-III",
+     "text": "MED-III"
+    },
+    {
+     "value": "MED-IV",
+     "text": "MED-IV"
+    },
+    {
+     "value": "SEM-1",
+     "text": "SEM-1"
+    },
+    {
+     "value": "SEM-2",
+     "text": "SEM-2"
+    },
+    {
+     "value": "SEM-3",
+     "text": "SEM-3"
+    },
+    {
+     "value": "SEM-4",
+     "text": "SEM-4"
+    }
+   ]
+  },
+  "SEMESTER(2023-25)|||PG (Regular)": {
+   "t": 1791602047218,
+   "list": [
+    {
+     "value": "SEM-1",
+     "text": "SEM-1"
+    },
+    {
+     "value": "SEM-2",
+     "text": "SEM-2"
+    },
+    {
+     "value": "SEM-3",
+     "text": "SEM-3"
+    },
+    {
+     "value": "SEM-4",
+     "text": "SEM-4"
+    }
+   ]
+  },
+  "SEMESTER(2023-25)|||PG (Vocational)": {
+   "t": 1791602047218,
+   "list": [
+    {
+     "value": "MED-2",
+     "text": "MED-2"
+    },
+    {
+     "value": "MED-3",
+     "text": "MED-3"
+    },
+    {
+     "value": "MED-4",
+     "text": "MED-4"
+    },
+    {
+     "value": "MED-I",
+     "text": "MED-I"
+    },
+    {
+     "value": "SEM-1",
+     "text": "SEM-1"
+    },
+    {
+     "value": "SEM-2",
+     "text": "SEM-2"
+    },
+    {
+     "value": "SEM-3",
+     "text": "SEM-3"
+    },
+    {
+     "value": "SEM-4",
+     "text": "SEM-4"
+    }
+   ]
+  },
+  "SEMESTER(2024-26)|||PG (Vocational)": {
+   "t": 1791602047219,
+   "list": [
+    {
+     "value": "LLM-1",
+     "text": "LLM-1"
+    },
+    {
+     "value": "LLM-2",
+     "text": "LLM-2"
+    },
+    {
+     "value": "LLM-3",
+     "text": "LLM-3"
+    },
+    {
+     "value": "LLM-4",
+     "text": "LLM-4"
+    },
+    {
+     "value": "MED-2",
+     "text": "MED-2"
+    },
+    {
+     "value": "MED-3",
+     "text": "MED-3"
+    },
+    {
+     "value": "MED-4",
+     "text": "MED-4"
+    },
+    {
+     "value": "MED-I",
+     "text": "MED-I"
+    },
+    {
+     "value": "SEM-1",
+     "text": "SEM-1"
+    },
+    {
+     "value": "SEM-2",
+     "text": "SEM-2"
+    },
+    {
+     "value": "SEM-3",
+     "text": "SEM-3"
+    },
+    {
+     "value": "SEM-4",
+     "text": "SEM-4"
+    }
+   ]
+  },
+  "SEMESTER(2024-26)|||PG (Regular)": {
+   "t": 1791602047218,
+   "list": [
+    {
+     "value": "SEM-1",
+     "text": "SEM-1"
+    },
+    {
+     "value": "SEM-2",
+     "text": "SEM-2"
+    },
+    {
+     "value": "SEM-3",
+     "text": "SEM-3"
+    },
+    {
+     "value": "SEM-4",
+     "text": "SEM-4"
+    }
+   ]
+  },
+  "SEMESTER(2025-27)|||PG (Vocational)": {
+   "t": 1791602047219,
+   "list": [
+    {
+     "value": "MED-I",
+     "text": "MED-I"
+    },
+    {
+     "value": "MED-II",
+     "text": "MED-II"
+    },
+    {
+     "value": "SEM-1",
+     "text": "SEM-1"
+    },
+    {
+     "value": "SEM-2",
+     "text": "SEM-2"
+    }
+   ]
+  },
+  "SEMESTER(2025-27)|||PG (Regular)": {
+   "t": 1791602047219,
+   "list": [
+    {
+     "value": "SEM-1",
+     "text": "SEM-1"
+    },
+    {
+     "value": "SEM-2",
+     "text": "SEM-2"
+    }
+   ]
+  },
+  "YEAR-2022|||Annual": {
+   "t": 1791602047219,
+   "list": [
+    {
+     "value": "ABPT",
+     "text": "ABPT"
+    },
+    {
+     "value": "BLIS",
+     "text": "BLIS"
+    },
+    {
+     "value": "BMLT(LE)",
+     "text": "BMLT(LE)"
+    },
+    {
+     "value": "BMRIT(LE)",
+     "text": "BMRIT(LE)"
+    },
+    {
+     "value": "MLIS",
+     "text": "MLIS"
+    },
+    {
+     "value": "PHD",
+     "text": "PHD"
+    }
+   ]
+  },
+  "YEAR-2022|||General": {
+   "t": 1791602047219,
+   "list": [
+    {
+     "value": "BA-I",
+     "text": "BA-I"
+    },
+    {
+     "value": "BA-II",
+     "text": "BA-II"
+    },
+    {
+     "value": "BA-III",
+     "text": "BA-III"
+    },
+    {
+     "value": "BCOM-I",
+     "text": "BCOM-I"
+    },
+    {
+     "value": "BCOM-II",
+     "text": "BCOM-II"
+    },
+    {
+     "value": "BCOM-III",
+     "text": "BCOM-III"
+    },
+    {
+     "value": "BSC-I",
+     "text": "BSC-I"
+    },
+    {
+     "value": "BSC-II",
+     "text": "BSC-II"
+    },
+    {
+     "value": "BSC-III",
+     "text": "BSC-III"
+    }
+   ]
+  },
+  "YEAR-2022|||Regular": {
+   "t": 1791602047219,
+   "list": [
+    {
+     "value": "B.A.Hons.(Part-I)",
+     "text": "B.A.Hons.(Part-I)"
+    },
+    {
+     "value": "B.A.Hons.(Part-II)",
+     "text": "B.A.Hons.(Part-II)"
+    },
+    {
+     "value": "B.A.Hons.(Part-III)",
+     "text": "B.A.Hons.(Part-III)"
+    },
+    {
+     "value": "B.Com(Part-I)",
+     "text": "B.Com(Part-I)"
+    },
+    {
+     "value": "B.Com(Part-II)",
+     "text": "B.Com(Part-II)"
+    },
+    {
+     "value": "B.Com(Part-III)",
+     "text": "B.Com(Part-III)"
+    },
+    {
+     "value": "B.Sc.Hons.(Part-I)",
+     "text": "B.Sc.Hons.(Part-I)"
+    },
+    {
+     "value": "B.Sc.Hons.(Part-II)",
+     "text": "B.Sc.Hons.(Part-II)"
+    },
+    {
+     "value": "B.Sc.Hons.(Part-III)",
+     "text": "B.Sc.Hons.(Part-III)"
+    }
+   ]
+  },
+  "YEAR-2022|||Vocational": {
+   "t": 1791602047219,
+   "list": [
+    {
+     "value": "BALLB-I",
+     "text": "BALLB-I"
+    },
+    {
+     "value": "BALLB-II",
+     "text": "BALLB-II"
+    },
+    {
+     "value": "BALLB-III",
+     "text": "BALLB-III"
+    },
+    {
+     "value": "BED-I",
+     "text": "BED-I"
+    },
+    {
+     "value": "BED-II",
+     "text": "BED-II"
+    },
+    {
+     "value": "BPED-I",
+     "text": "BPED-I"
+    },
+    {
+     "value": "BPED-II",
+     "text": "BPED-II"
+    },
+    {
+     "value": "LLB-I",
+     "text": "LLB-I"
+    },
+    {
+     "value": "LLB-II",
+     "text": "LLB-II"
+    },
+    {
+     "value": "LLB-III",
+     "text": "LLB-III"
+    },
+    {
+     "value": "PART-1",
+     "text": "PART-1"
+    },
+    {
+     "value": "PART-2",
+     "text": "PART-2"
+    },
+    {
+     "value": "PART-3",
+     "text": "PART-3"
+    }
+   ]
+  },
+  "YEAR-2023|||Annual": {
+   "t": 1791602047219,
+   "list": [
+    {
+     "value": "ABPT",
+     "text": "ABPT"
+    },
+    {
+     "value": "BLIS",
+     "text": "BLIS"
+    },
+    {
+     "value": "BMLT(LE)",
+     "text": "BMLT(LE)"
+    },
+    {
+     "value": "MLIS",
+     "text": "MLIS"
+    }
+   ]
+  },
+  "YEAR-2023|||General": {
+   "t": 1791602047219,
+   "list": [
+    {
+     "value": "BA-I",
+     "text": "BA-I"
+    },
+    {
+     "value": "BA-II",
+     "text": "BA-II"
+    },
+    {
+     "value": "BA-III",
+     "text": "BA-III"
+    },
+    {
+     "value": "BCOM-I",
+     "text": "BCOM-I"
+    },
+    {
+     "value": "BCOM-II",
+     "text": "BCOM-II"
+    },
+    {
+     "value": "BCOM-III",
+     "text": "BCOM-III"
+    },
+    {
+     "value": "BSC-I",
+     "text": "BSC-I"
+    },
+    {
+     "value": "BSC-II",
+     "text": "BSC-II"
+    },
+    {
+     "value": "BSC-III",
+     "text": "BSC-III"
+    }
+   ]
+  },
+  "YEAR-2023|||Regular": {
+   "t": 1791602047219,
+   "list": [
+    {
+     "value": "B.A.Hons.(Part-I)",
+     "text": "B.A.Hons.(Part-I)"
+    },
+    {
+     "value": "B.A.Hons.(Part-II)",
+     "text": "B.A.Hons.(Part-II)"
+    },
+    {
+     "value": "B.A.Hons.(Part-III)",
+     "text": "B.A.Hons.(Part-III)"
+    },
+    {
+     "value": "B.Com(Part-I)",
+     "text": "B.Com(Part-I)"
+    },
+    {
+     "value": "B.Com(Part-II)",
+     "text": "B.Com(Part-II)"
+    },
+    {
+     "value": "B.Com(Part-III)",
+     "text": "B.Com(Part-III)"
+    },
+    {
+     "value": "B.Sc.Hons.(Part-I)",
+     "text": "B.Sc.Hons.(Part-I)"
+    },
+    {
+     "value": "B.Sc.Hons.(Part-II)",
+     "text": "B.Sc.Hons.(Part-II)"
+    },
+    {
+     "value": "B.Sc.Hons.(Part-III)",
+     "text": "B.Sc.Hons.(Part-III)"
+    }
+   ]
+  },
+  "YEAR-2023|||Vocational": {
+   "t": 1791602047219,
+   "list": [
+    {
+     "value": "B.Pharma_Sem-I",
+     "text": "B.Pharma_Sem-I"
+    },
+    {
+     "value": "B.Pharma_Sem-II",
+     "text": "B.Pharma_Sem-II"
+    },
+    {
+     "value": "BALLB-I",
+     "text": "BALLB-I"
+    },
+    {
+     "value": "BALLB-II",
+     "text": "BALLB-II"
+    },
+    {
+     "value": "BALLB-III",
+     "text": "BALLB-III"
+    },
+    {
+     "value": "BALLB-IV",
+     "text": "BALLB-IV"
+    },
+    {
+     "value": "BED-I",
+     "text": "BED-I"
+    },
+    {
+     "value": "BED-II",
+     "text": "BED-II"
+    },
+    {
+     "value": "BPED-I",
+     "text": "BPED-I"
+    },
+    {
+     "value": "BPED-II",
+     "text": "BPED-II"
+    },
+    {
+     "value": "LLB-I",
+     "text": "LLB-I"
+    },
+    {
+     "value": "LLB-II",
+     "text": "LLB-II"
+    },
+    {
+     "value": "LLB-III",
+     "text": "LLB-III"
+    },
+    {
+     "value": "Part-I",
+     "text": "Part-I"
+    },
+    {
+     "value": "Part-II",
+     "text": "Part-II"
+    },
+    {
+     "value": "Part-III",
+     "text": "Part-III"
+    }
+   ]
+  },
+  "YEAR-2024|||Annual": {
+   "t": 1791602047220,
+   "list": [
+    {
+     "value": "BLIS",
+     "text": "BLIS"
+    },
+    {
+     "value": "BMLT(LE)",
+     "text": "BMLT(LE)"
+    },
+    {
+     "value": "MLIS",
+     "text": "MLIS"
+    },
+    {
+     "value": "PGDCR-I",
+     "text": "PGDCR-I"
+    },
+    {
+     "value": "PGDCR-II",
+     "text": "PGDCR-II"
+    }
+   ]
+  },
+  "YEAR-2024|||General": {
+   "t": 1791602047220,
+   "list": [
+    {
+     "value": "BA-I",
+     "text": "BA-I"
+    },
+    {
+     "value": "BA-II",
+     "text": "BA-II"
+    },
+    {
+     "value": "BA-III",
+     "text": "BA-III"
+    },
+    {
+     "value": "BCOM-I",
+     "text": "BCOM-I"
+    },
+    {
+     "value": "BCOM-II",
+     "text": "BCOM-II"
+    },
+    {
+     "value": "BCOM-III",
+     "text": "BCOM-III"
+    },
+    {
+     "value": "BSC-I",
+     "text": "BSC-I"
+    },
+    {
+     "value": "BSC-II",
+     "text": "BSC-II"
+    },
+    {
+     "value": "BSC-III",
+     "text": "BSC-III"
+    }
+   ]
+  },
+  "YEAR-2024|||Regular": {
+   "t": 1791602047220,
+   "list": [
+    {
+     "value": "B.A.Hons.(Part-I)",
+     "text": "B.A.Hons.(Part-I)"
+    },
+    {
+     "value": "B.A.Hons.(Part-II)",
+     "text": "B.A.Hons.(Part-II)"
+    },
+    {
+     "value": "B.A.Hons.(Part-III)",
+     "text": "B.A.Hons.(Part-III)"
+    },
+    {
+     "value": "B.Com(Part-I)",
+     "text": "B.Com(Part-I)"
+    },
+    {
+     "value": "B.Com(Part-II)",
+     "text": "B.Com(Part-II)"
+    },
+    {
+     "value": "B.Com(Part-III)",
+     "text": "B.Com(Part-III)"
+    },
+    {
+     "value": "B.Sc.Hons.(Part-I)",
+     "text": "B.Sc.Hons.(Part-I)"
+    },
+    {
+     "value": "B.Sc.Hons.(Part-II)",
+     "text": "B.Sc.Hons.(Part-II)"
+    },
+    {
+     "value": "B.Sc.Hons.(Part-III)",
+     "text": "B.Sc.Hons.(Part-III)"
+    }
+   ]
+  },
+  "YEAR-2024|||Vocational": {
+   "t": 1791602047220,
+   "list": [
+    {
+     "value": "BALLB1",
+     "text": "BALLB1"
+    },
+    {
+     "value": "BALLB2",
+     "text": "BALLB2"
+    },
+    {
+     "value": "BALLB3",
+     "text": "BALLB3"
+    },
+    {
+     "value": "BALLB4",
+     "text": "BALLB4"
+    },
+    {
+     "value": "BALLB5",
+     "text": "BALLB5"
+    },
+    {
+     "value": "BALLB5_NOV24",
+     "text": "BALLB5_NOV24"
+    },
+    {
+     "value": "BED-I",
+     "text": "BED-I"
+    },
+    {
+     "value": "BED-II",
+     "text": "BED-II"
+    },
+    {
+     "value": "BPED-I",
+     "text": "BPED-I"
+    },
+    {
+     "value": "BPED-II",
+     "text": "BPED-II"
+    },
+    {
+     "value": "LLB1",
+     "text": "LLB1"
+    },
+    {
+     "value": "LLB2",
+     "text": "LLB2"
+    },
+    {
+     "value": "LLB3",
+     "text": "LLB3"
+    },
+    {
+     "value": "Part-I",
+     "text": "Part-I"
+    },
+    {
+     "value": "Part-II",
+     "text": "Part-II"
+    },
+    {
+     "value": "Part-III",
+     "text": "Part-III"
+    }
+   ]
+  },
+  "YEAR-2025|||Annual": {
+   "t": 1791602047220,
+   "list": [
+    {
+     "value": "BLIS",
+     "text": "BLIS"
+    },
+    {
+     "value": "MLIS",
+     "text": "MLIS"
+    },
+    {
+     "value": "PGDCR-2",
+     "text": "PGDCR-2"
+    },
+    {
+     "value": "PGDCR-I",
+     "text": "PGDCR-I"
+    }
+   ]
+  },
+  "YEAR-2025|||General": {
+   "t": 1791602047220,
+   "list": [
+    {
+     "value": "BA-I",
+     "text": "BA-I"
+    },
+    {
+     "value": "BA-II",
+     "text": "BA-II"
+    },
+    {
+     "value": "BA-III",
+     "text": "BA-III"
+    },
+    {
+     "value": "BCOM-I",
+     "text": "BCOM-I"
+    },
+    {
+     "value": "BCOM-II",
+     "text": "BCOM-II"
+    },
+    {
+     "value": "BCOM-III",
+     "text": "BCOM-III"
+    },
+    {
+     "value": "BSC-I",
+     "text": "BSC-I"
+    },
+    {
+     "value": "BSC-II",
+     "text": "BSC-II"
+    },
+    {
+     "value": "BSC-III",
+     "text": "BSC-III"
+    }
+   ]
+  },
+  "YEAR-2025|||Vocational": {
+   "t": 1791602047221,
+   "list": [
+    {
+     "value": "BALLB1",
+     "text": "BALLB1"
+    },
+    {
+     "value": "BALLB2",
+     "text": "BALLB2"
+    },
+    {
+     "value": "BALLB3",
+     "text": "BALLB3"
+    },
+    {
+     "value": "BALLB4",
+     "text": "BALLB4"
+    },
+    {
+     "value": "BALLB5",
+     "text": "BALLB5"
+    },
+    {
+     "value": "BED-I",
+     "text": "BED-I"
+    },
+    {
+     "value": "BED-II",
+     "text": "BED-II"
+    },
+    {
+     "value": "BPED-I",
+     "text": "BPED-I"
+    },
+    {
+     "value": "BPED-II",
+     "text": "BPED-II"
+    },
+    {
+     "value": "LLB1",
+     "text": "LLB1"
+    },
+    {
+     "value": "LLB2",
+     "text": "LLB2"
+    },
+    {
+     "value": "LLB3",
+     "text": "LLB3"
+    },
+    {
+     "value": "Part-I",
+     "text": "Part-I"
+    },
+    {
+     "value": "Part-II",
+     "text": "Part-II"
+    },
+    {
+     "value": "Part-III",
+     "text": "Part-III"
+    }
+   ]
+  },
+  "Provisional (Year-2025)|||Annual": {
+   "t": 1791602047217,
+   "list": [
+    {
+     "value": "BLIS",
+     "text": "BLIS"
+    }
+   ]
+  },
+  "SEMESTER(2021-23)|||PG (Regular)": {
+   "t": 1791450036060,
+   "list": [
+    {
+     "value": "SEM-1",
+     "text": "SEM-1"
+    },
+    {
+     "value": "SEM-2",
+     "text": "SEM-2"
+    },
+    {
+     "value": "SEM-3",
+     "text": "SEM-3"
+    },
+    {
+     "value": "SEM-4",
+     "text": "SEM-4"
+    }
+   ]
+  },
+  "YEAR-2021|||Vocational": {
+   "t": 1791450060611,
+   "list": [
+    {
+     "value": "BALLB1",
+     "text": "BALLB1"
+    },
+    {
+     "value": "BALLB2",
+     "text": "BALLB2"
+    },
+    {
+     "value": "BED-I",
+     "text": "BED-I"
+    },
+    {
+     "value": "BED-II",
+     "text": "BED-II"
+    },
+    {
+     "value": "BPED-I",
+     "text": "BPED-I"
+    },
+    {
+     "value": "LLB-I",
+     "text": "LLB-I"
+    },
+    {
+     "value": "LLB-II",
+     "text": "LLB-II"
+    },
+    {
+     "value": "PART-1",
+     "text": "PART-1"
+    },
+    {
+     "value": "PART-2",
+     "text": "PART-2"
+    },
+    {
+     "value": "PART-3",
+     "text": "PART-3"
+    }
+   ]
+  },
+  "YEAR-2020|||Regular": {
+   "t": 1791450053765,
+   "list": [
+    {
+     "value": "B.A.Hons. (Part-I)",
+     "text": "B.A.Hons. (Part-I)"
+    },
+    {
+     "value": "B.A.Hons. (Part-II)",
+     "text": "B.A.Hons. (Part-II)"
+    },
+    {
+     "value": "B.Com(Part-I)",
+     "text": "B.Com(Part-I)"
+    },
+    {
+     "value": "B.Com(Part-II)",
+     "text": "B.Com(Part-II)"
+    },
+    {
+     "value": "B.Sc.Hons.(Part-I)",
+     "text": "B.Sc.Hons.(Part-I)"
+    },
+    {
+     "value": "B.Sc.Hons.(Part-II)",
+     "text": "B.Sc.Hons.(Part-II)"
+    }
+   ]
+  },
+  "YEAR-2021|||Regular": {
+   "t": 1791450060611,
+   "list": [
+    {
+     "value": "B.A.Hons.(Part-I)",
+     "text": "B.A.Hons.(Part-I)"
+    },
+    {
+     "value": "B.A.Hons.(Part-II)",
+     "text": "B.A.Hons.(Part-II)"
+    },
+    {
+     "value": "B.A.Hons.(Part-III)",
+     "text": "B.A.Hons.(Part-III)"
+    },
+    {
+     "value": "B.Com(Part-I)",
+     "text": "B.Com(Part-I)"
+    },
+    {
+     "value": "B.Com(Part-II)",
+     "text": "B.Com(Part-II)"
+    },
+    {
+     "value": "B.Com(Part-III)",
+     "text": "B.Com(Part-III)"
+    },
+    {
+     "value": "B.Sc.Hons.(Part-I)",
+     "text": "B.Sc.Hons.(Part-I)"
+    },
+    {
+     "value": "B.Sc.Hons.(Part-II)",
+     "text": "B.Sc.Hons.(Part-II)"
+    },
+    {
+     "value": "B.Sc.Hons.(Part-III)",
+     "text": "B.Sc.Hons.(Part-III)"
+    }
+   ]
+  },
+  "SEMESTER(2021-23)|||Regular": {
+   "t": 1791450036500,
+   "list": [
+    {
+     "value": "B.A.Hons.(Part-I)",
+     "text": "B.A.Hons.(Part-I)"
+    },
+    {
+     "value": "B.A.Hons.(Part-II)",
+     "text": "B.A.Hons.(Part-II)"
+    }
+   ]
+  },
+  "YEAR-2019|||Regular": {
+   "t": 1791450040775,
+   "list": [
+    {
+     "value": "B.A.Hons. (Part-I)",
+     "text": "B.A.Hons. (Part-I)"
+    },
+    {
+     "value": "B.Com. Account (Part-I)",
+     "text": "B.Com. Account (Part-I)"
+    },
+    {
+     "value": "B.Com. Corporate (Part-I)",
+     "text": "B.Com. Corporate (Part-I)"
+    },
+    {
+     "value": "B.Sc.Hons. (Part-I)",
+     "text": "B.Sc.Hons. (Part-I)"
+    },
+    {
+     "value": "Tabulation Registrar",
+     "text": "Tabulation Registrar"
+    }
+   ]
+  },
+  "SEMESTER(2020-22)|||PG (VOCATIONAL)": {
+   "t": 1791450033865,
+   "list": [
+    {
+     "value": "MED-I",
+     "text": "MED-I"
+    },
+    {
+     "value": "MED-II",
+     "text": "MED-II"
+    },
+    {
+     "value": "MED-III",
+     "text": "MED-III"
+    },
+    {
+     "value": "MED-IV",
+     "text": "MED-IV"
+    },
+    {
+     "value": "SEM-I",
+     "text": "SEM-I"
+    },
+    {
+     "value": "SEM-II",
+     "text": "SEM-II"
+    },
+    {
+     "value": "SEM-III",
+     "text": "SEM-III"
+    },
+    {
+     "value": "SEM-IV",
+     "text": "SEM-IV"
+    }
+   ]
+  },
+  "Paramedical Result Session 2019-2022&23|||Annual": {
+   "t": 1791449999523,
+   "list": [
+    {
+     "value": "BMLT(LE)",
+     "text": "BMLT(LE)"
+    },
+    {
+     "value": "BMRIT(LE)",
+     "text": "BMRIT(LE)"
+    },
+    {
+     "value": "BPT(Abridge)",
+     "text": "BPT(Abridge)"
+    }
+   ]
+  },
+  "Paramedical Result Session 2019-2022&23|||Semester": {
+   "t": 1791449999524,
+   "list": [
+    {
+     "value": "BPT-1SEM",
+     "text": "BPT-1SEM"
+    },
+    {
+     "value": "BPT-2SEM",
+     "text": "BPT-2SEM"
+    },
+    {
+     "value": "BPT-3SEM",
+     "text": "BPT-3SEM"
+    },
+    {
+     "value": "BPT-3SEM(Promoted)",
+     "text": "BPT-3SEM(Promoted)"
+    },
+    {
+     "value": "BPT-4SEM",
+     "text": "BPT-4SEM"
+    },
+    {
+     "value": "BPT-5SEM",
+     "text": "BPT-5SEM"
+    },
+    {
+     "value": "BPT-6SEM",
+     "text": "BPT-6SEM"
+    },
+    {
+     "value": "BPT-7SEM",
+     "text": "BPT-7SEM"
+    },
+    {
+     "value": "BPT-8SEM",
+     "text": "BPT-8SEM"
+    },
+    {
+     "value": "BPT-8SEM (Promoted_Aug_2026)",
+     "text": "BPT-8SEM (Promoted_Aug_2026)"
+    }
+   ]
+  },
+  "Paramedical Result Session 2019-2022&23|||Yearly": {
+   "t": 1791449999524,
+   "list": [
+    {
+     "value": "BMLT&BMRIT(PART-I)",
+     "text": "BMLT&BMRIT(PART-I)"
+    },
+    {
+     "value": "BMLT2",
+     "text": "BMLT2"
+    },
+    {
+     "value": "BMLT3",
+     "text": "BMLT3"
+    },
+    {
+     "value": "BMRIT2",
+     "text": "BMRIT2"
+    },
+    {
+     "value": "BMRIT3",
+     "text": "BMRIT3"
+    }
+   ]
+  },
+  "Paramedical Result Session 2018-2021&22|||Annual": {
+   "t": 1791449999523,
+   "list": [
+    {
+     "value": "BMLT(LE)",
+     "text": "BMLT(LE)"
+    },
+    {
+     "value": "BPT(Abridged)",
+     "text": "BPT(Abridged)"
+    }
+   ]
+  },
+  "Paramedical Result Session 2018-2021&22|||Semester": {
+   "t": 1791449999523,
+   "list": [
+    {
+     "value": "BPT SEM-I",
+     "text": "BPT SEM-I"
+    },
+    {
+     "value": "BPT SEM-II",
+     "text": "BPT SEM-II"
+    },
+    {
+     "value": "BPT SEM-III",
+     "text": "BPT SEM-III"
+    },
+    {
+     "value": "BPT SEM-IV",
+     "text": "BPT SEM-IV"
+    },
+    {
+     "value": "BPT SEM-V",
+     "text": "BPT SEM-V"
+    },
+    {
+     "value": "BPT SEM-VI",
+     "text": "BPT SEM-VI"
+    },
+    {
+     "value": "BPT SEM-VII",
+     "text": "BPT SEM-VII"
+    },
+    {
+     "value": "BPT SEM-VIII",
+     "text": "BPT SEM-VIII"
+    }
+   ]
+  },
+  "Paramedical Result Session 2018-2021&22|||Yearly": {
+   "t": 1791449999523,
+   "list": [
+    {
+     "value": "BMLT PART-1",
+     "text": "BMLT PART-1"
+    },
+    {
+     "value": "BMLT&BMRIT(PART-II)",
+     "text": "BMLT&BMRIT(PART-II)"
+    },
+    {
+     "value": "BMLT3",
+     "text": "BMLT3"
+    },
+    {
+     "value": "BMRIT PART-I",
+     "text": "BMRIT PART-I"
+    },
+    {
+     "value": "BMRIT3",
+     "text": "BMRIT3"
+    }
+   ]
+  },
+  "Paramedical Result Session 2020-22|||Annual": {
+   "t": 1791449999524,
+   "list": [],
+   "empty": true
+  },
+  "Paramedical Result Session 2020-22|||Yearly": {
+   "t": 1791450002592,
+   "list": [
+    {
+     "value": "MOT1",
+     "text": "MOT1"
+    },
+    {
+     "value": "MOT2",
+     "text": "MOT2"
+    },
+    {
+     "value": "MPT1",
+     "text": "MPT1"
+    },
+    {
+     "value": "MPT2",
+     "text": "MPT2"
+    }
+   ]
+  },
+  "Paramedical Result Session 2020-22|||Semester": {
+   "t": 1791450011214,
+   "list": [],
+   "empty": true
+  },
+  "Paramedical Result Session 2020-23|||Annual": {
+   "t": 1791450012475,
+   "list": [],
+   "empty": true
+  },
+  "Paramedical Result Session 2020-23|||Yearly": {
+   "t": 1791450014689,
+   "list": [
+    {
+     "value": "BMLT1",
+     "text": "BMLT1"
+    },
+    {
+     "value": "BMLT2",
+     "text": "BMLT2"
+    },
+    {
+     "value": "BMLT3",
+     "text": "BMLT3"
+    },
+    {
+     "value": "BMRIT1",
+     "text": "BMRIT1"
+    },
+    {
+     "value": "BMRIT2",
+     "text": "BMRIT2"
+    },
+    {
+     "value": "BMRIT3",
+     "text": "BMRIT3"
+    },
+    {
+     "value": "BOOPLE1",
+     "text": "BOOPLE1"
+    },
+    {
+     "value": "BOOPLE2",
+     "text": "BOOPLE2"
+    },
+    {
+     "value": "BOOPLE3",
+     "text": "BOOPLE3"
+    }
+   ]
+  },
+  "Paramedical Result Session 2020-23|||Semester": {
+   "t": 1791450022583,
+   "list": [],
+   "empty": true
+  },
+  "Paramedical Result Session 2020-24|||Semester": {
+   "t": 1791450024283,
+   "list": [
+    {
+     "value": "B.Pharma-1",
+     "text": "B.Pharma-1"
+    },
+    {
+     "value": "B.Pharma-1(Back Paper Year-2024)",
+     "text": "B.Pharma-1(Back Paper Year-2024)"
+    },
+    {
+     "value": "B.Pharma-1(Back Paper Year-2026)",
+     "text": "B.Pharma-1(Back Paper Year-2026)"
+    },
+    {
+     "value": "B.Pharma-2",
+     "text": "B.Pharma-2"
+    },
+    {
+     "value": "B.Pharma-2(Back Paper Year-2024)",
+     "text": "B.Pharma-2(Back Paper Year-2024)"
+    },
+    {
+     "value": "B.Pharma-3",
+     "text": "B.Pharma-3"
+    },
+    {
+     "value": "B.Pharma-3(Back Paper Year-2025)",
+     "text": "B.Pharma-3(Back Paper Year-2025)"
+    },
+    {
+     "value": "B.Pharma-4",
+     "text": "B.Pharma-4"
+    },
+    {
+     "value": "B.Pharma-4(Back Paper Year-2025)",
+     "text": "B.Pharma-4(Back Paper Year-2025)"
+    },
+    {
+     "value": "B.Pharma-5",
+     "text": "B.Pharma-5"
+    },
+    {
+     "value": "B.Pharma-5(Back Paper Year-2026)",
+     "text": "B.Pharma-5(Back Paper Year-2026)"
+    },
+    {
+     "value": "B.Pharma-6",
+     "text": "B.Pharma-6"
+    },
+    {
+     "value": "B.Pharma-6(Back Paper Year-2026)",
+     "text": "B.Pharma-6(Back Paper Year-2026)"
+    },
+    {
+     "value": "B.Pharma-7",
+     "text": "B.Pharma-7"
+    },
+    {
+     "value": "B.Pharma-8",
+     "text": "B.Pharma-8"
+    },
+    {
+     "value": "BPT-1SEM",
+     "text": "BPT-1SEM"
+    },
+    {
+     "value": "BPT-2SEM",
+     "text": "BPT-2SEM"
+    },
+    {
+     "value": "BPT-3SEM",
+     "text": "BPT-3SEM"
+    },
+    {
+     "value": "BPT-4SEM",
+     "text": "BPT-4SEM"
+    },
+    {
+     "value": "BPT-5SEM",
+     "text": "BPT-5SEM"
+    },
+    {
+     "value": "BPT-6SEM",
+     "text": "BPT-6SEM"
+    },
+    {
+     "value": "BPT-7SEM",
+     "text": "BPT-7SEM"
+    }
+   ]
+  },
+  "Paramedical Result Session 2020-24|||Annual": {
+   "t": 1791450024576,
+   "list": [],
+   "empty": true
+  },
+  "Paramedical Result Session 2020-24|||Yearly": {
+   "t": 1791450026116,
+   "list": [
+    {
+     "value": "BASLP1",
+     "text": "BASLP1"
+    },
+    {
+     "value": "BASLP2",
+     "text": "BASLP2"
+    },
+    {
+     "value": "BASLP3",
+     "text": "BASLP3"
+    },
+    {
+     "value": "BOOP1",
+     "text": "BOOP1"
+    },
+    {
+     "value": "BOOP2",
+     "text": "BOOP2"
+    },
+    {
+     "value": "BOOP3",
+     "text": "BOOP3"
+    },
+    {
+     "value": "BOOP4",
+     "text": "BOOP4"
+    }
+   ]
+  },
+  "Paramedical Result Session 2021-23|||Yearly": {
+   "t": 1791450026560,
+   "list": [
+    {
+     "value": "MOT1",
+     "text": "MOT1"
+    },
+    {
+     "value": "MOT2",
+     "text": "MOT2"
+    },
+    {
+     "value": "MPT1",
+     "text": "MPT1"
+    },
+    {
+     "value": "MPT2",
+     "text": "MPT2"
+    }
+   ]
+  },
+  "Paramedical Result Session 2021-24|||Yearly": {
+   "t": 1791450028248,
+   "list": [
+    {
+     "value": "BMLT1",
+     "text": "BMLT1"
+    },
+    {
+     "value": "BMLT2",
+     "text": "BMLT2"
+    },
+    {
+     "value": "BMLT3",
+     "text": "BMLT3"
+    },
+    {
+     "value": "BMRIT1",
+     "text": "BMRIT1"
+    },
+    {
+     "value": "BMRIT2",
+     "text": "BMRIT2"
+    },
+    {
+     "value": "BMRIT3",
+     "text": "BMRIT3"
+    }
+   ]
+  },
+  "Paramedical Result Session 2021-25|||Semester": {
+   "t": 1791450028560,
+   "list": [
+    {
+     "value": "BPT-1SEM",
+     "text": "BPT-1SEM"
+    },
+    {
+     "value": "BPT-2SEM",
+     "text": "BPT-2SEM"
+    },
+    {
+     "value": "BPT-3SEM",
+     "text": "BPT-3SEM"
+    },
+    {
+     "value": "BPT-4SEM",
+     "text": "BPT-4SEM"
+    },
+    {
+     "value": "BPT-5SEM",
+     "text": "BPT-5SEM"
+    },
+    {
+     "value": "BPT-6SEM",
+     "text": "BPT-6SEM"
+    }
+   ]
+  },
+  "Paramedical Result Session 2021-25|||Yearly": {
+   "t": 1791450030477,
+   "list": [
+    {
+     "value": "BASLP1",
+     "text": "BASLP1"
+    },
+    {
+     "value": "BASLP2",
+     "text": "BASLP2"
+    },
+    {
+     "value": "BASLP3",
+     "text": "BASLP3"
+    },
+    {
+     "value": "BOOP1",
+     "text": "BOOP1"
+    },
+    {
+     "value": "BOOP2",
+     "text": "BOOP2"
+    },
+    {
+     "value": "BOOP3",
+     "text": "BOOP3"
+    },
+    {
+     "value": "BOOP4",
+     "text": "BOOP4"
+    }
+   ]
+  },
+  "SEMESTER(2018-20&2018-21)|||PG (Regular)": {
+   "t": 1791450030793,
+   "list": [
+    {
+     "value": "SEM-1",
+     "text": "SEM-1"
+    },
+    {
+     "value": "SEM-2",
+     "text": "SEM-2"
+    },
+    {
+     "value": "SEM-3",
+     "text": "SEM-3"
+    },
+    {
+     "value": "SEM-4",
+     "text": "SEM-4"
+    }
+   ]
+  },
+  "SEMESTER(2018-20&2018-21)|||PG (VOCATIONAL)": {
+   "t": 1791450032013,
+   "list": [
+    {
+     "value": "SEM-I",
+     "text": "SEM-I"
+    },
+    {
+     "value": "SEM-II",
+     "text": "SEM-II"
+    },
+    {
+     "value": "SEM-III",
+     "text": "SEM-III"
+    },
+    {
+     "value": "SEM-IV",
+     "text": "SEM-IV"
+    },
+    {
+     "value": "SEM-V",
+     "text": "SEM-V"
+    },
+    {
+     "value": "SEM-VI",
+     "text": "SEM-VI"
+    }
+   ]
+  },
+  "SEMESTER(2019-21&2019-22)|||PG (Regular)": {
+   "t": 1791450032453,
+   "list": [
+    {
+     "value": "SEM-I",
+     "text": "SEM-I"
+    },
+    {
+     "value": "SEM-II",
+     "text": "SEM-II"
+    },
+    {
+     "value": "SEM-III",
+     "text": "SEM-III"
+    },
+    {
+     "value": "SEM-IV",
+     "text": "SEM-IV"
+    }
+   ]
+  },
+  "SEMESTER(2019-21&2019-22)|||PG (VOCATIONAL)": {
+   "t": 1791450033865,
+   "list": [
+    {
+     "value": "MCA-V",
+     "text": "MCA-V"
+    },
+    {
+     "value": "MCA-VI",
+     "text": "MCA-VI"
+    },
+    {
+     "value": "MED-II",
+     "text": "MED-II"
+    },
+    {
+     "value": "MED-III",
+     "text": "MED-III"
+    },
+    {
+     "value": "MED-IV",
+     "text": "MED-IV"
+    },
+    {
+     "value": "SEM-I",
+     "text": "SEM-I"
+    },
+    {
+     "value": "SEM-II",
+     "text": "SEM-II"
+    },
+    {
+     "value": "SEM-III",
+     "text": "SEM-III"
+    },
+    {
+     "value": "SEM-IV",
+     "text": "SEM-IV"
+    },
+    {
+     "value": "SEM-V",
+     "text": "SEM-V"
+    },
+    {
+     "value": "SEM-VI",
+     "text": "SEM-VI"
+    }
+   ]
+  },
+  "SEMESTER(2020-22)|||PG (Regular)": {
+   "t": 1791450034436,
+   "list": [
+    {
+     "value": "SEM-1",
+     "text": "SEM-1"
+    },
+    {
+     "value": "SEM-2",
+     "text": "SEM-2"
+    },
+    {
+     "value": "SEM-3",
+     "text": "SEM-3"
+    },
+    {
+     "value": "SEM-4",
+     "text": "SEM-4"
+    }
+   ]
+  },
+  "SEMESTER(2021-23)|||Annual": {
+   "t": 1791450036060,
+   "list": [
+    {
+     "value": "ABPT",
+     "text": "ABPT"
+    },
+    {
+     "value": "BLIS",
+     "text": "BLIS"
+    },
+    {
+     "value": "BMLT(LE)",
+     "text": "BMLT(LE)"
+    },
+    {
+     "value": "MLIS",
+     "text": "MLIS"
+    },
+    {
+     "value": "PGDCR-I",
+     "text": "PGDCR-I"
+    }
+   ]
+  },
+  "SEMESTER(2021-23)|||General": {
+   "t": 1791450036500,
+   "list": [
+    {
+     "value": "BA-I",
+     "text": "BA-I"
+    },
+    {
+     "value": "BA-II",
+     "text": "BA-II"
+    },
+    {
+     "value": "BA-III",
+     "text": "BA-III"
+    },
+    {
+     "value": "BCOM-I",
+     "text": "BCOM-I"
+    },
+    {
+     "value": "BCOM-II",
+     "text": "BCOM-II"
+    },
+    {
+     "value": "BCOM-III",
+     "text": "BCOM-III"
+    },
+    {
+     "value": "BSC-I",
+     "text": "BSC-I"
+    },
+    {
+     "value": "BSC-II",
+     "text": "BSC-II"
+    },
+    {
+     "value": "BSC-III",
+     "text": "BSC-III"
+    }
+   ]
+  },
+  "SEMESTER(2021-23)|||PG (VOCATIONAL)": {
+   "t": 1791450039631,
+   "list": [
+    {
+     "value": "MED-I",
+     "text": "MED-I"
+    },
+    {
+     "value": "MED-II",
+     "text": "MED-II"
+    },
+    {
+     "value": "MED-III",
+     "text": "MED-III"
+    },
+    {
+     "value": "MED-IV",
+     "text": "MED-IV"
+    },
+    {
+     "value": "SEM-1",
+     "text": "SEM-1"
+    },
+    {
+     "value": "SEM-2",
+     "text": "SEM-2"
+    },
+    {
+     "value": "SEM-3",
+     "text": "SEM-3"
+    },
+    {
+     "value": "SEM-4",
+     "text": "SEM-4"
+    }
+   ]
+  },
+  "YEAR-2019|||Annual": {
+   "t": 1791450040775,
+   "list": [
+    {
+     "value": "BLIS",
+     "text": "BLIS"
+    },
+    {
+     "value": "MLIS",
+     "text": "MLIS"
+    }
+   ]
+  },
+  "YEAR-2019|||UG(Vocational)": {
+   "t": 1791450042445,
+   "list": [
+    {
+     "value": "Part-I",
+     "text": "Part-I"
+    },
+    {
+     "value": "Part-II",
+     "text": "Part-II"
+    }
+   ]
+  },
+  "YEAR-2020|||Annual": {
+   "t": 1791450043856,
+   "list": [
+    {
+     "value": "BLIS",
+     "text": "BLIS"
+    },
+    {
+     "value": "MLIS",
+     "text": "MLIS"
+    }
+   ]
+  },
+  "YEAR-2019|||B.Ed. Year-I (Session 2018-2020)": {
+   "t": 1791450050761,
+   "list": [],
+   "empty": true
+  },
+  "YEAR-2020|||General": {
+   "t": 1791450052595,
+   "list": [
+    {
+     "value": "BA1",
+     "text": "BA1"
+    },
+    {
+     "value": "BCOM1",
+     "text": "BCOM1"
+    },
+    {
+     "value": "BSC1",
+     "text": "BSC1"
+    }
+   ]
+  },
+  "YEAR-2020|||BLIS": {
+   "t": 1791450053765,
+   "list": [],
+   "empty": true
+  },
+  "YEAR-2020|||Vocational": {
+   "t": 1791450056423,
+   "list": [
+    {
+     "value": "BA LL.B Part-I",
+     "text": "BA LL.B Part-I"
+    },
+    {
+     "value": "BED-I",
+     "text": "BED-I"
+    },
+    {
+     "value": "BED-II",
+     "text": "BED-II"
+    },
+    {
+     "value": "LL.B. -Part-I",
+     "text": "LL.B. -Part-I"
+    },
+    {
+     "value": "Part-I",
+     "text": "Part-I"
+    }
+   ]
+  },
+  "YEAR-2021|||Annual": {
+   "t": 1791450058416,
+   "list": [
+    {
+     "value": "BLIS",
+     "text": "BLIS"
+    },
+    {
+     "value": "BMLT(LE)",
+     "text": "BMLT(LE)"
+    },
+    {
+     "value": "BMRIT(LE)",
+     "text": "BMRIT(LE)"
+    },
+    {
+     "value": "BPT(Abridge)",
+     "text": "BPT(Abridge)"
+    },
+    {
+     "value": "MLIS",
+     "text": "MLIS"
+    },
+    {
+     "value": "PGDCR-2",
+     "text": "PGDCR-2"
+    },
+    {
+     "value": "PGDCR-I",
+     "text": "PGDCR-I"
+    }
+   ]
+  },
+  "YEAR-2021|||General": {
+   "t": 1791450060611,
+   "list": [
+    {
+     "value": "B.COM1",
+     "text": "B.COM1"
+    },
+    {
+     "value": "B.COM2",
+     "text": "B.COM2"
+    },
+    {
+     "value": "B.SC1",
+     "text": "B.SC1"
+    },
+    {
+     "value": "B.SC2",
+     "text": "B.SC2"
+    },
+    {
+     "value": "BA1",
+     "text": "BA1"
+    },
+    {
+     "value": "BA2",
+     "text": "BA2"
+    }
+   ]
+  },
+  "YEAR-2020|||MLIS": {
+   "t": 1791450063467,
+   "list": [],
+   "empty": true
+  }
+ }
+}

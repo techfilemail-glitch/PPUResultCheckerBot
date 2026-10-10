@@ -1,0 +1,23 @@
+{
+  "combos": {
+    "PG REG|semester|pg (regular)": {
+      "hits": 4,
+      "lastCourse": "SEM-1",
+      "last": "2026-10-07T07:21:27.184Z"
+    },
+    "UG REG|yearly|regular": {
+      "hits": 26,
+      "lastCourse": "B.A.Hons.(Part-II)",
+      "last": "2026-10-08T06:58:26.102Z"
+    }
+  },
+  "unknown": {
+    "sessions": [],
+    "exams": [
+      "BLIS",
+      "MLIS",
+      "B.Ed. Year-I (Session 2018-2020)"
+    ],
+    "courses": []
+  }
+}

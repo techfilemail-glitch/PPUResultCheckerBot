@@ -1,0 +1,2851 @@
+﻿const fs = require("fs");
+const os = require("os");
+const path = require("path");
+const { PDFDocument } = require("pdf-lib");
+
+const college = require("./bulk/college");
+const log = require("./logger");
+
+const {
+  getSessions,
+  getExamTypes,
+  getCourses,
+  checkResult,
+  buildKnownPdfUrl,
+  verifyPdfDirect,
+} = require("./result-checker");
+
+const { extractResultDetails } = require("./result-details");
+
+const {
+  initializeArchive,
+  archiveLockerPdf,
+  findLockerPdf,
+  getLockerPdf,
+  findIndividualPdf,
+  getIndividualPdf,
+} = require("./pdf-archive");
+
+const store = require("./profile-store");
+
+// Session / exam / course selection portal-map.js ke rules + scoring se hota hai.
+const portalMap = require("./portal-map");
+const fullScan = require("./full-scan");
+
+const { pickSessions, pickExam, filterCourses, pickFirstCourse, courseSeq } =
+  portalMap;
+
+const TYPES = ["UG REG", "UG VOC", "PG REG", "PG VOC"];
+const STREAMS = ["arts", "science", "commerce"];
+
+const MAX_ROLL_CHANGES = 5;
+const BUILD_TIMEOUT_MS = 20000;
+
+/*
+=========================================================
+HELPERS
+=========================================================
+*/
+
+function clean(value) {
+  return String(value || "").replace(/\s+/g, " ").trim();
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function safeName(value) {
+  return (
+    String(value || "")
+      .replace(/[<>:"/\\|?*\x00-\x1F]/g, "_")
+      .replace(/\s+/g, "_")
+      .replace(/_+/g, "_")
+      .replace(/^_+|_+$/g, "")
+      .slice(0, 80) || "file"
+  );
+}
+
+const pad = (value, size) => String(value ?? "").trim().padStart(size, "0");
+
+async function pool(limit, items, worker) {
+  let next = 0;
+
+  const runners = Array.from(
+    { length: Math.min(limit, items.length) },
+    async () => {
+      while (true) {
+        const index = next++;
+
+        if (index >= items.length) {
+          return;
+        }
+
+        await worker(items[index], index);
+      }
+    }
+  );
+
+  await Promise.all(runners);
+}
+
+// Concurrency limiter: fn() ko queue karta hai, ek time par `limit` chalte hain.
+function createLimiter(limit) {
+  let active = 0;
+  const queue = [];
+
+  const next = () => {
+    if (active >= limit || !queue.length) {
+      return;
+    }
+
+    active++;
+
+    const { fn, resolve, reject } = queue.shift();
+
+    fn()
+      .then(resolve, reject)
+      .finally(() => {
+        active--;
+        next();
+      });
+  };
+
+  return (fn) =>
+    new Promise((resolve, reject) => {
+      queue.push({ fn, resolve, reject });
+      next();
+    });
+}
+
+const VOC_RE = /\bvoc(?:ational)?\b/;
+
+const STREAM_RULES = {
+  arts: [/\bb\.?\s*a\b/, /\barts?\b/],
+  science: [/\bb\.?\s*sc\b/, /\bscience\b/],
+  commerce: [/\bb\.?\s*com\b/, /\bcommerce\b/],
+};
+
+function courseMatchesStream(stream, courseText) {
+  const rules = STREAM_RULES[stream];
+
+  if (!rules) {
+    return true;
+  }
+
+  return rules.some((rule) => rule.test(courseText));
+}
+
+function optionText(option) {
+  return clean(`${option?.text || ""} ${option?.value || ""}`).toLowerCase();
+}
+
+function sessionHasYear(session, year) {
+  return new RegExp(`(?:^|[^0-9])${year}(?:[^0-9]|$)`).test(
+    clean(`${session.text || ""} ${session.value || ""}`)
+  );
+}
+
+function examKindOk(kind, exam, allowSemester = true) {
+  const text = optionText(exam);
+
+  const isVoc = VOC_RE.test(text);
+
+  if (kind === "VOC") {
+    return isVoc;
+  }
+
+  const regular = allowSemester
+    ? /\bregular\b|\bgeneral\b|\bannual\b|\byearly\b|\bsemester\b/
+    : /\bregular\b|\bgeneral\b|\bannual\b|\byearly\b/;
+
+  return regular.test(text) && !isVoc;
+}
+
+// Regular exam sabse pehle, phir General (regular hi maana jaata hai), phir baaki.
+function examRank(exam) {
+  const text = optionText(exam);
+
+  if (/\bregular\b/.test(text)) return 0;
+  if (/\bgeneral\b/.test(text)) return 1;
+  if (/\bannual\b|\byearly\b/.test(text)) return 2;
+
+  return 3;
+}
+
+function isThreeYearUg(program) {
+  return program.level === "UG" && Number(program.duration) === 3;
+}
+
+function isLegacyProgram(program) {
+  return isThreeYearUg(program) && Number(program.startYear) <= 2022;
+}
+
+function partNo(text) {
+  const m = clean(text).match(/part[\s._-]*(iii|ii|i|3|2|1)(?![a-z0-9])/i);
+
+  if (!m) {
+    return 0;
+  }
+
+  const value = m[1].toLowerCase();
+
+  if (value === "i" || value === "1") return 1;
+  if (value === "ii" || value === "2") return 2;
+  if (value === "iii" || value === "3") return 3;
+
+  return 0;
+}
+
+function semNo(text) {
+  const m = clean(text).match(
+    /sem(?:ester)?[\s._-]*(viii|vii|vi|iv|v|iii|ii|i|[1-8])(?![a-z0-9])/i
+  );
+
+  if (!m) {
+    return 0;
+  }
+
+  const roman = { i: 1, ii: 2, iii: 3, iv: 4, v: 5, vi: 6, vii: 7, viii: 8 };
+
+  const value = m[1].toLowerCase();
+
+  return roman[value] || Number(value) || 0;
+}
+
+function safeClassify(course) {
+  try {
+    return portalMap.classifyCourse(course) || {};
+  } catch (_) {
+    return {};
+  }
+}
+
+function portalFrom(found) {
+  return {
+    session: found.session.value,
+    sessionText: found.session.text,
+    examType: found.exam.value,
+    examTypeText: found.exam.text,
+    course: found.course.value,
+    courseText: found.course.text,
+  };
+}
+
+/*
+=========================================================
+ROLL NUMBER
+Format: YY + COLLEGE(3) + SUBJECT(4) + SERIAL(4) = 13 digits
+=========================================================
+*/
+
+function parseRoll(roll) {
+  const value = String(roll || "").trim();
+
+  if (!/^\d{13}$/.test(value)) {
+    return null;
+  }
+
+  return {
+    roll: value,
+    regYY: value.slice(0, 2),
+    collegeCode: value.slice(2, 5),
+    subjectCode: value.slice(5, 9),
+    serial: value.slice(9),
+  };
+}
+
+/*
+=========================================================
+CSV TYPE (UG REG / UG VOC / PG REG / PG VOC)
+Optional override: bulk/csv-types.json
+  { "myfile.csv": "UG REG" }
+=========================================================
+*/
+
+let typeOverrideCache = { mtime: 0, data: {} };
+
+function loadTypeOverrides() {
+  try {
+    const file = path.join(__dirname, "bulk", "csv-types.json");
+
+    if (!fs.existsSync(file)) {
+      return {};
+    }
+
+    const mtime = fs.statSync(file).mtimeMs;
+
+    if (typeOverrideCache.mtime === mtime) {
+      return typeOverrideCache.data;
+    }
+
+    const raw = JSON.parse(fs.readFileSync(file, "utf8"));
+
+    const data = {};
+
+    for (const [name, type] of Object.entries(raw)) {
+      data[String(name).toLowerCase()] = String(type).toUpperCase().trim();
+    }
+
+    typeOverrideCache = { mtime, data };
+
+    return data;
+  } catch (_) {
+    return {};
+  }
+}
+
+function classifyCsv(fileName, section) {
+  const overrides = loadTypeOverrides();
+
+  const key = String(fileName || "").toLowerCase();
+
+  if (TYPES.includes(overrides[key])) {
+    return overrides[key];
+  }
+
+  const sec = String(section || "").toUpperCase().trim();
+
+  if (TYPES.includes(sec)) {
+    return sec;
+  }
+
+  const name = path.basename(key, ".csv");
+
+  const vocational =
+    /voc/.test(name) || /(?:^|[^a-z])(?:pg|ug)\s*v(?![a-z])/.test(name);
+
+  let level = null;
+
+  if (/pg|post/.test(name)) {
+    level = "PG";
+  } else if (/ug|under/.test(name)) {
+    level = "UG";
+  }
+
+  if (!level) {
+    console.warn(
+      `⚠️ CSV type unknown for "${fileName}" - treating as UG REG (use bulk/csv-types.json to fix)`
+    );
+
+    level = "UG";
+  }
+
+  return `${level} ${vocational ? "VOC" : "REG"}`;
+}
+
+/*
+=========================================================
+MASTER CSV
+Profile setup ke liye SIRF Master CSV. Baaki CSV (UGT/UGV/PGT/PGV) yahan
+scan nahi hote (bulk/fullcollege flows unhe alag se use karte hain).
+=========================================================
+*/
+
+const csvRowsCache = new Map();
+
+function getCsvRows(file) {
+  const cached = csvRowsCache.get(file.path);
+
+  if (cached && cached.modified === file.modified) {
+    return cached.rows;
+  }
+
+  let rows = [];
+
+  try {
+    rows = college.loadCsvFile(file.path);
+  } catch (error) {
+    console.error(`⚠️ CSV skipped (${file.name}):`, error.message);
+  }
+
+  csvRowsCache.set(file.path, {
+    modified: file.modified,
+    rows,
+  });
+
+  return rows;
+}
+
+function isMasterCsv(fileName) {
+  return /master/i.test(String(fileName || ""));
+}
+
+let masterCsvRef = null;
+
+function masterCsvFiles() {
+  if (masterCsvRef) {
+    try {
+      return [
+        { ...masterCsvRef, modified: fs.statSync(masterCsvRef.path).mtimeMs },
+      ];
+    } catch (_) {
+      masterCsvRef = null;
+    }
+  }
+
+  const dirs = [
+    path.join(__dirname, "bulk"),
+    path.join(__dirname, "bulk", "csv"),
+    path.join(__dirname, "csv"),
+    __dirname,
+  ];
+
+  for (const dir of dirs) {
+    try {
+      const name = fs
+        .readdirSync(dir)
+        .find((entry) => /master/i.test(entry) && /\.csv$/i.test(entry));
+
+      if (name) {
+        const full = path.join(dir, name);
+
+        masterCsvRef = { name, path: full };
+
+        return [{ ...masterCsvRef, modified: fs.statSync(full).mtimeMs }];
+      }
+    } catch (_) {}
+  }
+
+  // Aakhri raasta: purana scanner (sirf Master filter karke).
+  try {
+    return college.scanCsvFiles(false).filter((file) => isMasterCsv(file.name));
+  } catch (_) {
+    return [];
+  }
+}
+
+// "1 Year", "2 Years", "1", "24 months", "Two Year" -> number of years
+function parseDurationYears(value) {
+  if (value === undefined || value === null) return 0;
+
+  const text = String(value).trim().toLowerCase();
+
+  if (!text) return 0;
+
+  const words = { one: 1, two: 2, three: 3, four: 4, five: 5 };
+  const m = text.match(/(\d+(?:\.\d+)?)|\b(one|two|three|four|five)\b/);
+
+  if (!m) return 0;
+
+  let n = m[1] ? Number(m[1]) : words[m[2]];
+
+  if (/month|mnth|\bmo\b/.test(text)) n = n / 12;
+
+  n = Math.round(n);
+
+  return n >= 1 && n <= 6 ? n : 0;
+}
+
+let durationWarned = false;
+
+function durationFromRow(row) {
+  if (!row || typeof row !== "object") return 0;
+
+  const keys = Object.keys(row);
+
+  const pick = (re) => keys.find((k) => re.test(k));
+
+  const key =
+    pick(/duration/i) || pick(/\b(years?|yrs?)\b/i) || pick(/period|tenure/i);
+
+  if (key) {
+    const d = parseDurationYears(row[key]);
+    if (d) return d;
+  }
+
+  if (!durationWarned) {
+    durationWarned = true;
+    console.warn(
+      "⚠️ Master CSV row me duration column nahi mila. Keys:",
+      keys.join(", ")
+    );
+  }
+
+  return 0;
+}
+
+function findCsvMatches(parsed) {
+  const wantedCollege = pad(parsed.collegeCode, 3);
+  const wantedSubject = pad(parsed.subjectCode, 4);
+
+  const matches = [];
+  const seenTypes = new Set();
+
+  for (const file of masterCsvFiles()) {
+    for (const row of getCsvRows(file)) {
+      if (
+        pad(row.collegeCode, 3) !== wantedCollege ||
+        pad(row.subjectCode, 4) !== wantedSubject
+      ) {
+        continue;
+      }
+
+      const type = classifyCsv(file.name, row.section);
+
+      if (seenTypes.has(type)) {
+        break;
+      }
+
+      seenTypes.add(type);
+
+      matches.push({
+        type,
+        file: file.name,
+        collegeCode: wantedCollege,
+        collegeName: row.collegeName,
+        subject: row.subject,
+        subjectCode: wantedSubject,
+        section: row.section,
+        duration: durationFromRow(row),
+      });
+
+      break;
+    }
+  }
+
+  return matches;
+}
+
+// Current Master CSV duration for an existing profile / match (0 if unknown)
+function masterDuration(profile) {
+  try {
+    const wantedCollege = pad(profile.collegeCode, 3);
+    const wantedSubject = pad(profile.subjectCode, 4);
+
+    for (const file of masterCsvFiles()) {
+      for (const row of getCsvRows(file)) {
+        if (
+          pad(row.collegeCode, 3) === wantedCollege &&
+          pad(row.subjectCode, 4) === wantedSubject
+        ) {
+          return durationFromRow(row);
+        }
+      }
+    }
+  } catch (_) {}
+
+  return 0;
+}
+
+/*
+=========================================================
+PROGRAM / SESSION LOGIC
+UG REG : 4 years (reg yr 24+), else 3
+UG VOC : 3 years
+PG     : 2 years
+Session start (and portal session year) = reg year - 1
+=========================================================
+*/
+
+function computeProgram(type, regYY, durationOverride) {
+  const yy = Number(regYY);
+  const startYear = 2000 + yy - 1;
+
+  const [level, kind] = String(type).split(" ");
+
+  let duration = 2;
+
+  if (level === "UG") {
+    if (kind === "REG") {
+      duration = yy >= 24 ? 4 : 3;
+    } else if (kind === "VOC") {
+      duration = 3;
+    }
+  }
+
+  const master = Number(durationOverride);
+
+  if (Number.isFinite(master) && master >= 1) {
+    duration = master;
+  }
+
+  return {
+    type,
+    level,
+    kind,
+    startYear,
+    duration,
+    portalYear: startYear,
+    sessionLabel: `${startYear}-${String(startYear + duration).slice(-2)}`,
+  };
+}
+
+function programOf(profile) {
+  const d = masterDuration(profile) || Number(profile.duration) || 0;
+  return computeProgram(profile.type, profile.regYY, d);
+}
+
+function streamOf(match) {
+  const category = college.getSubjectCategory({
+    subject: match.subject,
+    section: match.section,
+  });
+
+  if (typeof category === "string") {
+    return category || null;
+  }
+
+  return category?.stream || category?.category || category?.type || null;
+}
+
+/*
+=========================================================
+PDF DOWNLOAD + NAME EXTRACTION
+=========================================================
+*/
+
+async function downloadPdfBuffer(url) {
+  const response = await fetch(url, {
+    signal: AbortSignal.timeout(20000),
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+
+  const buffer = Buffer.from(await response.arrayBuffer());
+
+  if (buffer.length < 100 || buffer.subarray(0, 5).toString() !== "%PDF-") {
+    throw new Error("Not a valid PDF");
+  }
+
+  return buffer;
+}
+
+function normKey(key) {
+  return String(key || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+// extractResultDetails ke field naam alag ho sakte hain - fuzzy match.
+function fuzzyField(details, kind) {
+  if (!details || typeof details !== "object") {
+    return "";
+  }
+
+  const entries = Object.entries(details).filter(
+    ([, value]) => typeof value === "string" || typeof value === "number"
+  );
+
+  const exactNames =
+    kind === "name"
+      ? [
+          "name",
+          "studentname",
+          "candidatename",
+          "nameofstudent",
+          "nameofcandidate",
+        ]
+      : [
+          "regno",
+          "registrationno",
+          "registrationnumber",
+          "regnumber",
+          "registration",
+          "reg",
+          "enrollmentno",
+          "enrollmentnumber",
+          "enrolmentno",
+          "enrollment",
+        ];
+
+  for (const wanted of exactNames) {
+    const hit = entries.find(([key]) => normKey(key) === wanted);
+
+    if (hit && clean(hit[1])) {
+      return clean(hit[1]);
+    }
+  }
+
+  for (const [key, value] of entries) {
+    const k = normKey(key);
+
+    if (!clean(value)) {
+      continue;
+    }
+
+    if (
+      kind === "name" &&
+      k.includes("name") &&
+      !/(father|mother|guardian|college|course|subject|exam|paper|school|board|file|univ)/.test(
+        k
+      )
+    ) {
+      return clean(value);
+    }
+
+    if (kind === "reg" && k.includes("reg") && !k.includes("roll")) {
+      return clean(value);
+    }
+  }
+
+  return "";
+}
+
+// pdfjs-dist ke alag versions ke liye alag import path try karte hain.
+let pdfjsGetDocument = null;
+
+async function loadPdfjs() {
+  if (pdfjsGetDocument) {
+    return pdfjsGetDocument;
+  }
+
+  const paths = [
+    "pdfjs-dist/legacy/build/pdf.mjs",
+    "pdfjs-dist/legacy/build/pdf.js",
+    "pdfjs-dist/build/pdf.mjs",
+    "pdfjs-dist/build/pdf.js",
+    "pdfjs-dist",
+  ];
+
+  let lastError = null;
+
+  for (const modulePath of paths) {
+    try {
+      const mod = await import(modulePath);
+
+      const getDocument = mod.getDocument || mod.default?.getDocument;
+
+      if (typeof getDocument === "function") {
+        pdfjsGetDocument = getDocument;
+        return getDocument;
+      }
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw new Error(`pdfjs-dist load failed: ${lastError?.message || "unknown"}`);
+}
+
+async function extractTextFromPdfFile(filePath, maxPages = 2) {
+  const getDocument = await loadPdfjs();
+
+  const data = new Uint8Array(await fs.promises.readFile(filePath));
+
+  const doc = await getDocument({ data, useSystemFonts: true }).promise;
+
+  let text = "";
+
+  for (let i = 1; i <= Math.min(doc.numPages, maxPages); i++) {
+    const page = await doc.getPage(i);
+
+    const content = await page.getTextContent();
+
+    text += " " + content.items.map((item) => item.str).join(" ");
+  }
+
+  return text.replace(/\s+/g, " ").trim();
+}
+
+function parseIdentityText(text, roll = "") {
+  const stop =
+    "(?=\\s+(?:father|mother|guardian|roll|reg|registration|course|college|session|semester|sem|exam|class|dob|date|sex|gender|category|centre|center)\\b|$)";
+
+  const nameMatch = text.match(
+    new RegExp(
+      "(?:name\\s*of\\s*(?:the\\s*)?(?:student|candidate)|(?:student|candidate)['’]?s?\\s*name|\\bname)\\s*[:\\-]\\s*([A-Za-z][A-Za-z .']{2,60}?)" +
+        stop,
+      "i"
+    )
+  );
+
+  // "Reg No", "Reg. No.", "Regn No", "Registration Number", "Registration No :" ...
+  // value me kam se kam ek digit hona chahiye (taaki "Registered" jaise words na pakde jayein).
+  const regPattern =
+    /\breg(?:n|istration)?\.?\s*(?:no|number|num|#)?\.?\s*[:\-–—]?\s*((?=[A-Z0-9\/\-]*\d)[A-Z0-9][A-Z0-9\/\-]{4,24})/gi;
+
+  let regNo = "";
+
+  let match;
+
+  while ((match = regPattern.exec(text))) {
+    const value = clean(match[1]);
+
+    if (roll && value.includes(String(roll))) {
+      continue;
+    }
+
+    regNo = value;
+
+    break;
+  }
+
+  if (!regNo) {
+    const enroll = text.match(
+      /\benrol+ment\s*(?:no|number|num)?\.?\s*[:\-–—]?\s*((?=[A-Z0-9\/\-]*\d)[A-Z0-9][A-Z0-9\/\-]{4,24})/i
+    );
+
+    if (enroll && !(roll && enroll[1].includes(String(roll)))) {
+      regNo = clean(enroll[1]);
+    }
+  }
+
+  return {
+    name: nameMatch ? clean(nameMatch[1]) : "",
+    regNo,
+  };
+}
+
+async function extractIdentityFromText(filePath, roll) {
+  try {
+    const text = await extractTextFromPdfFile(filePath);
+
+    const identity = parseIdentityText(text, roll);
+
+    if (!identity.regNo) {
+      const spots = [];
+
+      const finder = /reg/gi;
+
+      let hit;
+
+      while ((hit = finder.exec(text)) && spots.length < 3) {
+        spots.push(text.slice(Math.max(0, hit.index - 20), hit.index + 80));
+      }
+
+      log.debug(
+        `Reg no not found in PDF text. Contexts: ${JSON.stringify(spots)}`
+      );
+    }
+
+    return identity;
+  } catch (error) {
+    console.error("⚠️ PDF text fallback failed:", error.message);
+
+    return { name: "", regNo: "" };
+  }
+}
+
+async function readDetailsFromBuffer(buffer, roll) {
+  const tmp = path.join(
+    os.tmpdir(),
+    `ppu-profile-${Date.now()}-${roll}.pdf`
+  );
+
+  await fs.promises.writeFile(tmp, buffer);
+
+  try {
+    let details = {};
+
+    try {
+      details = (await extractResultDetails(tmp)) || {};
+    } catch (error) {
+      console.error("⚠️ extractResultDetails failed:", error.message);
+    }
+
+    let name = fuzzyField(details, "name");
+    let regNo = fuzzyField(details, "reg");
+
+    if (!name || !regNo) {
+      log.debug(
+        `Profile: name="${name}" reg="${regNo}" - trying PDF text fallback`
+      );
+
+      const fallback = await extractIdentityFromText(tmp, roll);
+
+      name = name || fallback.name;
+      regNo = regNo || fallback.regNo;
+    }
+
+    return {
+      ...details,
+      name: name || "",
+      regNo: regNo || "",
+    };
+  } finally {
+    await fs.promises.unlink(tmp).catch(() => {});
+  }
+}
+
+async function readDetailsFromPdf(url, roll) {
+  return readDetailsFromBuffer(await downloadPdfBuffer(url), roll);
+}
+
+/*
+=========================================================
+FIND THE FIRST-SEMESTER RESULT ON PORTAL
+=========================================================
+*/
+
+async function tryCheckResult(session, exam, course, roll) {
+  try {
+    const result = await checkResult({
+      session: session.value,
+      examType: exam.value,
+      course: course.value,
+      roll,
+    });
+
+    if (result && result.success && result.type === "pdf" && result.pdfUrl) {
+      return result.pdfUrl;
+    }
+  } catch (_) {}
+
+  return null;
+}
+
+async function findFirstResult(
+  program,
+  stream,
+  roll,
+  subjectCode = "",
+  subject = ""
+) {
+  const sessions = await getSessions();
+
+  const targetYear = Number(program.startYear);
+
+  const ranked = pickSessions(sessions, program);
+
+  const exact = ranked.filter((session) => sessionHasYear(session, targetYear));
+
+  const strictThreeYear = isThreeYearUg(program);
+
+  const sessionList = strictThreeYear
+    ? exact
+    : [...exact, ...ranked.filter((session) => !exact.includes(session))];
+
+  const isUgReg = program.level === "UG" && program.kind === "REG";
+
+  const streams = isUgReg
+    ? [stream, ...STREAMS.filter((item) => item !== stream)].filter(Boolean)
+    : [null];
+
+  const wantedCode = clean(subjectCode).toLowerCase();
+  const wantedSubject = clean(subject).toLowerCase();
+
+  let firstGuess = null;
+
+  for (const session of sessionList) {
+    let exam = null;
+    let courses = [];
+
+    try {
+      exam = pickExam(await getExamTypes(session.value), program, session);
+
+      if (!exam) {
+        continue;
+      }
+
+      courses = await getCourses(session.value, exam.value);
+    } catch (_) {
+      continue;
+    }
+
+    if (!examKindOk(program.kind, exam)) {
+      continue;
+    }
+
+    for (const st of streams) {
+      const filteredCourses = filterCourses(courses, program, st);
+
+      let course = null;
+
+      if (wantedCode || wantedSubject) {
+        course =
+          filteredCourses.find((option) => {
+            const text = optionText(option);
+
+            return (
+              (wantedCode && text.includes(wantedCode)) ||
+              (wantedSubject && text.includes(wantedSubject))
+            );
+          }) || null;
+      }
+
+      if (!course) {
+        course = pickFirstCourse(filteredCourses, program, st);
+      }
+
+      if (!course) {
+        continue;
+      }
+
+      if (isUgReg && Number(program.duration) === 3) {
+        const courseText = optionText(course);
+
+        if (VOC_RE.test(courseText)) continue;
+
+        if (!courseMatchesStream(st, courseText)) continue;
+
+        if (![1, 2, 3].includes(courseSeq(courseText) || partNo(courseText)))
+          continue;
+      }
+
+      const url = buildKnownPdfUrl({
+        session: session.value,
+        examType: exam.value,
+        course: course.value,
+        roll,
+      });
+
+      if (!firstGuess) {
+        firstGuess = { session, exam, course, stream: st };
+      }
+
+      if (await verifyPdfDirect(url)) {
+        portalMap.recordHit({ program, session, exam, course });
+
+        return { session, exam, course, stream: st, url };
+      }
+
+      const pdfUrl = await tryCheckResult(session, exam, course, roll);
+
+      if (pdfUrl) {
+        portalMap.recordHit({ program, session, exam, course });
+
+        return { session, exam, course, stream: st, url: pdfUrl };
+      }
+    }
+  }
+
+  if (strictThreeYear) {
+    // Purane (<= 2022) 3-year UG: portal-map ke rules na pakadein to legacy scan se Part-I lo.
+    if (isLegacyProgram(program)) {
+      try {
+        const legacy = await scanLegacyCore(
+          program,
+          stream,
+          roll,
+          subjectCode,
+          subject
+        );
+
+        const hit = legacy[0];
+
+        if (hit) {
+          return {
+            session: hit.session,
+            exam: hit.exam,
+            course: hit.course,
+            stream: hit.stream || stream,
+            url: hit.url,
+          };
+        }
+      } catch (error) {
+        console.warn("⚠️ Legacy first-result lookup failed:", error.message);
+      }
+    }
+
+    return null;
+  }
+
+  if (firstGuess) {
+    const pdfUrl = await tryCheckResult(
+      firstGuess.session,
+      firstGuess.exam,
+      firstGuess.course,
+      roll
+    );
+
+    if (pdfUrl) {
+      return { ...firstGuess, url: pdfUrl };
+    }
+  }
+
+  try {
+    const scan = await fullScan.scanAll(roll, { firstOnly: true });
+
+    const hit = scan.entries?.[0];
+
+    if (hit) {
+      return {
+        session: hit.session,
+        exam: hit.exam,
+        course: hit.course,
+        stream: hit.stream || stream,
+        url: hit.url,
+      };
+    }
+  } catch (_) {}
+
+  return null;
+}
+
+/*
+ * Returns:
+ *   { ok, found, details, program, stream, match, [message] }
+ *   found   -> { session, exam, course, stream, url } | null
+ *   details -> extracted result details + normalized { name, regNo }
+ */
+async function buildFromMatch(parsed, match) {
+  const program = computeProgram(
+    match.type,
+    parsed.regYY,
+    masterDuration(match) || Number(match.duration) || 0
+  );
+
+  const stream = streamOf(match);
+
+  const found = await findFirstResult(
+    program,
+    stream,
+    parsed.roll,
+    parsed.subjectCode,
+    match.subject
+  );
+
+  if (!found) {
+    return {
+      ok: false,
+      found: null,
+      details: { name: "", regNo: "" },
+      program,
+      stream,
+      match,
+      message: "Result portal par is roll number ka result nahi mila.",
+    };
+  }
+
+  let details = { name: "", regNo: "" };
+
+  try {
+    details = await readDetailsFromPdf(found.url, parsed.roll);
+  } catch (error) {
+    console.error("⚠️ Profile PDF read failed:", error.message);
+  }
+
+  return {
+    ok: true,
+    found,
+    details,
+    program,
+    stream: found.stream || stream,
+    match,
+  };
+}
+
+/*
+=========================================================
+CREATE PROFILE
+=========================================================
+*/
+
+function rollChangesLeft(profile) {
+  return Math.max(
+    0,
+    MAX_ROLL_CHANGES - Number((profile && profile.rollChanges) || 0)
+  );
+}
+
+async function createProfile({ telegramId, username, roll, unlimited = false }) {
+  const parsed = parseRoll(roll);
+
+  if (!parsed) {
+    return {
+      ok: false,
+      message: "Roll number exactly 13 digits ka hona chahiye.",
+    };
+  }
+
+  const linkCheck = store.canLinkRoll(telegramId, parsed.roll);
+
+  if (!linkCheck.allowed) {
+    return {
+      ok: false,
+      message:
+        "Ye roll number abhi link nahi kiya ja sakta. Galti lage to owner se sampark karein.",
+    };
+  }
+
+  const prev = store.getByTelegramId(telegramId);
+
+  const isChange = Boolean(prev && prev.roll !== parsed.roll);
+  const usedChanges = Number(prev?.rollChanges || 0);
+
+  if (isChange && !unlimited && usedChanges >= MAX_ROLL_CHANGES) {
+    return {
+      ok: false,
+      limitReached: true,
+      message:
+        `Roll number badalne ki limit (${MAX_ROLL_CHANGES} baar) khatam ho gayi hai. ` +
+        `Pehle /delprofile karke profile dobara setup karein.`,
+    };
+  }
+
+  const matches = findCsvMatches(parsed);
+
+  if (!matches.length) {
+    return {
+      ok: false,
+      message:
+        "Is roll number ka college code / subject code hamare records (CSV) mein nahi mila. Roll number dobara check karein.",
+    };
+  }
+
+  const resolveChosen = async () => {
+    let best = null;
+
+    for (const m of matches) {
+      const built = await buildFromMatch(parsed, m);
+
+      if (built.found) {
+        return { match: m, built };
+      }
+
+      if (!best) {
+        best = { match: m, built };
+      }
+    }
+
+    return best;
+  };
+
+  // Portal lookup background mein start karo.
+  const lookup = resolveChosen();
+
+  lookup.catch(() => {});
+
+  const TIMED_OUT = Symbol("timeout");
+
+  let timer;
+
+  const raced = await Promise.race([
+    lookup,
+    new Promise((resolve) => {
+      timer = setTimeout(() => resolve(TIMED_OUT), BUILD_TIMEOUT_MS);
+    }),
+  ]).catch(() => TIMED_OUT);
+
+  clearTimeout(timer);
+
+  const timedOut = raced === TIMED_OUT;
+
+  let chosen = raced;
+
+  if (timedOut) {
+    const m = matches[0];
+
+    chosen = {
+      match: m,
+      built: {
+        found: null,
+        details: { name: "", regNo: "" },
+        program: computeProgram(
+          m.type,
+          parsed.regYY,
+          masterDuration(m) || Number(m.duration) || 0
+        ),
+        stream: streamOf(m),
+      },
+    };
+  }
+
+  const { match, built } = chosen;
+
+  const keepPrev = Boolean(prev && !isChange);
+
+  const name = built.details?.name || (keepPrev && prev.name) || "";
+
+  const regNo = built.details?.regNo || (keepPrev && prev.regNo) || "";
+
+  const profile = {
+    telegramId: String(telegramId),
+    username: username || "",
+    roll: parsed.roll,
+    regYY: parsed.regYY,
+    regNo,
+    name,
+    namePending: !name,
+    collegeCode: match.collegeCode,
+    collegeName: match.collegeName,
+    subject: match.subject,
+    subjectCode: match.subjectCode,
+    csvFile: match.file,
+    type: match.type,
+    stream: built.stream,
+    duration: built.program.duration,
+    sessionLabel: built.program.sessionLabel,
+    portal: built.found ? portalFrom(built.found) : null,
+    locker: isChange || !prev ? {} : prev.locker || {},
+    rollChanges: usedChanges + (isChange ? 1 : 0),
+    createdAt: (prev && prev.createdAt) || new Date().toISOString(),
+  };
+
+  // Agar result lookup timeout se pehle complete ho gaya,
+  // to extracted details isi profile mein save honge.
+  if (built.details && typeof built.details === "object") {
+    const extracted = { ...built.details };
+
+    delete extracted.name;
+    delete extracted.regNo;
+
+    if (Object.keys(extracted).length) {
+      profile.resultDetails = {
+        ...(prev?.resultDetails || {}),
+        ...extracted,
+      };
+    }
+  }
+
+  await store.save(profile);
+
+  /*
+   * Timeout ke case mein lookup background mein continue karega.
+   *
+   * IMPORTANT:
+   * Caller ko background result complete hone ke baad updated profile
+   * lene ke liye profileReady promise diya ja raha hai.
+   */
+  let profileReady = null;
+
+  if (timedOut) {
+    profileReady = lookup
+      .then(async (res) => {
+        if (!res) {
+          return store.getByTelegramId(telegramId) || profile;
+        }
+
+        const current = store.getByTelegramId(telegramId);
+
+        if (!current || current.roll !== parsed.roll) {
+          return current || profile;
+        }
+
+        const { built: b } = res;
+
+        if (b.found) {
+          current.portal = portalFrom(b.found);
+          current.stream = b.stream || current.stream;
+        }
+
+        if (b.details && typeof b.details === "object") {
+          if (b.details.name) {
+            current.name = b.details.name;
+            current.namePending = false;
+          }
+
+          if (b.details.regNo) {
+            current.regNo = b.details.regNo;
+          }
+
+          const extracted = { ...b.details };
+
+          delete extracted.name;
+          delete extracted.regNo;
+
+          if (Object.keys(extracted).length) {
+            current.resultDetails = {
+              ...(current.resultDetails || {}),
+              ...extracted,
+            };
+          }
+        }
+
+        await store.save(current);
+
+        return current;
+      })
+      .catch((error) => {
+        console.error(
+          "⚠️ Background profile result lookup failed:",
+          error.message
+        );
+        return store.getByTelegramId(telegramId) || profile;
+      });
+  }
+
+  if (profileReady) {
+    return {
+      ok: true,
+      profile,
+      profileReady,
+    };
+  }
+
+  return {
+    ok: true,
+    profile,
+    profileReady: Promise.resolve(profile),
+  };
+}
+
+// Jin profiles ka result pehle available nahi tha, unka naam dobara nikalne ki koshish.
+async function refreshPendingName(profile) {
+  if (!profile || !profile.namePending) {
+    return profile;
+  }
+
+  try {
+    const parsed = parseRoll(profile.roll);
+
+    if (!parsed) {
+      return profile;
+    }
+
+    const built = await buildFromMatch(parsed, {
+      type: profile.type,
+      subject: profile.subject,
+      section: profile.type,
+      collegeCode: profile.collegeCode,
+      subjectCode: profile.subjectCode,
+      duration: profile.duration,
+    });
+
+    let changed = false;
+
+    if (built.found && !profile.portal) {
+      profile.portal = portalFrom(built.found);
+      changed = true;
+    }
+
+    if (built.details.name) {
+      profile.name = built.details.name;
+      profile.regNo = profile.regNo || built.details.regNo;
+      profile.namePending = false;
+      changed = true;
+    }
+
+    if (changed) {
+      await store.save(profile);
+    }
+  } catch (_) {}
+
+  return profile;
+}
+
+/*
+=========================================================
+PROFILE TEXT (user-facing: name, roll, reg no, college, session)
+=========================================================
+*/
+
+function sessionLabelOf(profile) {
+  if (profile.sessionManual && profile.sessionLabel) {
+    return profile.sessionLabel;
+  }
+
+  try {
+    return programOf(profile).sessionLabel;
+  } catch (_) {
+    return profile.sessionLabel || "—";
+  }
+}
+
+function formatProfile(profile) {
+  return (
+    `👤 <b>My Profile</b>\n\n` +
+    `🧑‍🎓 Name: <b>${escapeHtml(profile.name || "Not available yet")}</b>\n` +
+    `🎫 Roll No: <code>${escapeHtml(profile.roll)}</code>\n` +
+    `🆔 Registration No: <b>${escapeHtml(profile.regNo || "—")}</b>\n` +
+    `🏫 College: <b>${escapeHtml(profile.collegeCode)} ${escapeHtml(
+      profile.collegeName
+    )}</b>\n` +
+    `📚 Subject: <b>${escapeHtml(profile.subject || "—")}</b>\n` +
+    `📅 Session: <b>${escapeHtml(sessionLabelOf(profile))}</b>`
+  );
+}
+
+function formatProfileForOwner(profile) {
+  return (
+    `${formatProfile(profile)}\n\n` +
+    `<b>Owner details</b>\n` +
+    `📱 Telegram ID: <code>${escapeHtml(profile.telegramId)}</code>\n` +
+    `📄 CSV: ${escapeHtml(profile.csvFile)} (${escapeHtml(profile.type)})\n` +
+    `🔢 Subject Code: ${escapeHtml(profile.subjectCode)}\n` +
+    `🎓 Stream: ${escapeHtml(profile.stream || "-")}\n` +
+    `🌐 Portal: ${escapeHtml(profile.portal?.sessionText || "-")} / ${escapeHtml(
+      profile.portal?.examTypeText || "-"
+    )} / ${escapeHtml(profile.portal?.courseText || "-")}`
+  );
+}
+
+/*
+=========================================================
+LOCKER
+=========================================================
+*/
+
+async function scanLockerTargeted(profile) {
+  const base = programOf(profile);
+
+  const sessions = await getSessions();
+
+  const duration = Math.max(1, Number(base.duration || 2));
+
+  /*
+   * UG: portalYear .. portalYear + duration - 1
+   * PG: ek portal session year kaafi hai.
+   */
+  const years =
+    base.level === "PG"
+      ? [Number(base.portalYear)]
+      : Array.from(
+          { length: duration },
+          (_, index) => Number(base.portalYear) + index
+        );
+
+  const stream = profile.stream || null;
+
+  const subjectCode = clean(profile.subjectCode).toLowerCase();
+  const subject = clean(profile.subject).toLowerCase();
+
+  const entries = [];
+
+  for (const year of years) {
+    const program = { ...base, portalYear: year };
+
+    // pickSessions() program.portalYear use karta hai.
+    const ranked = pickSessions(sessions, program);
+
+    const exact = ranked.filter((session) => sessionHasYear(session, year));
+
+    const usableSessions = exact.length > 0 ? exact : ranked;
+
+    for (const session of usableSessions) {
+      let exam = null;
+      let courses = [];
+
+      try {
+        exam = pickExam(await getExamTypes(session.value), program, session);
+
+        if (!exam) continue;
+
+        courses = await getCourses(session.value, exam.value);
+      } catch (_) {
+        continue;
+      }
+
+      if (!examKindOk(base.kind, exam)) {
+        continue;
+      }
+
+      const filtered = filterCourses(courses, program, stream);
+
+      // UG Regular me stream filter se kuch na mile to random course na lo.
+      if (
+        base.level === "UG" &&
+        base.kind === "REG" &&
+        stream &&
+        filtered.length === 0
+      ) {
+        continue;
+      }
+
+      // Subject code / name wale courses pehle.
+      const isSubjectMatch = (option) => {
+        const text = optionText(option);
+
+        return (
+          (subjectCode && text.includes(subjectCode)) ||
+          (subject && text.includes(subject))
+        );
+      };
+
+      const orderedCourses =
+        subjectCode || subject
+          ? [
+              ...filtered.filter(isSubjectMatch),
+              ...filtered.filter((option) => !isSubjectMatch(option)),
+            ]
+          : filtered;
+
+      // Order preserve karte hue concurrent verify.
+      const results = new Array(orderedCourses.length).fill(null);
+
+      await pool(6, orderedCourses, async (course, index) => {
+        const url = buildKnownPdfUrl({
+          session: session.value,
+          examType: exam.value,
+          course: course.value,
+          roll: profile.roll,
+        });
+
+        try {
+          if (await verifyPdfDirect(url)) {
+            results[index] = { session, exam, course, stream, url, year };
+          }
+        } catch (_) {}
+      });
+
+      for (const hit of results) {
+        if (!hit) continue;
+
+        portalMap.recordHit({
+          program,
+          session: hit.session,
+          exam: hit.exam,
+          course: hit.course,
+        });
+
+        entries.push(hit);
+      }
+    }
+  }
+
+  // Duplicate PDFs hatao.
+  const seen = new Set();
+
+  return entries.filter((entry) => {
+    const key = [
+      entry.session?.value,
+      entry.exam?.value,
+      entry.course?.value,
+      entry.url,
+    ].join("|");
+
+    if (seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+
+    return true;
+  });
+}
+
+/*
+=========================================================
+LEGACY LOCKER
+
+Sirf UG jiska calculated startYear 2022 ya usse pehle ho.
+  regYY 23 -> startYear 2022 -> legacy
+  regYY 24 -> startYear 2023 -> normal
+
+Session -> YEAR-XXXX (exact), exam -> regular / vocational,
+course -> Part-I / II / III
+=========================================================
+*/
+
+function catalogYear(item) {
+  const direct = Number(
+    item.year || item.portalYear || item.sessionYear || item.startYear
+  );
+
+  if (Number.isFinite(direct) && direct > 0) {
+    return direct;
+  }
+
+  const raw =
+    item.session && typeof item.session === "object"
+      ? `${item.session.text || ""} ${item.session.value || ""}`
+      : `${item.session || ""} ${item.sessionText || ""} ${item.sessionValue || ""}`;
+
+  const m = raw.match(/(?:^|[^0-9])((?:19|20)\d{2})(?:[^0-9]|$)/);
+
+  return m ? Number(m[1]) : 0;
+}
+
+async function scanLegacyCore(
+  program,
+  stream,
+  roll,
+  subjectCode = "",
+  subject = ""
+) {
+  const targetYear = Number(program.startYear);
+
+  const code = clean(subjectCode).toLowerCase();
+  const name = clean(subject).toLowerCase();
+
+  const strictRegular = program.level === "UG" && program.kind === "REG";
+
+  const fallbackSession = {
+    value: `YEAR-${targetYear}`,
+    text: `YEAR-${targetYear}`,
+  };
+
+  const stats = { catalog: 0, live: 0, pairs: 0, examOk: 0, courseOk: 0 };
+
+  const pairs = [];
+
+  // 1. Catalog (fast path)
+  try {
+    await fullScan.ensureCatalog();
+
+    const catalog = fullScan.getCatalog ? await fullScan.getCatalog() : null;
+
+    if (Array.isArray(catalog)) {
+      stats.catalog = catalog.length;
+
+      for (const item of catalog) {
+        if (catalogYear(item) < targetYear || !catalogYear(item)) {
+          continue;
+        }
+
+        const exam = item.exam || item.examType || item.examOption;
+        const course = item.course || item.courseOption;
+
+        if (!exam || !course) {
+          continue;
+        }
+
+        const session =
+          item.session && typeof item.session === "object" && item.session.value
+            ? item.session
+            : fallbackSession;
+
+        pairs.push({ session, exam, course });
+      }
+    }
+  } catch (error) {
+    console.warn("⚠️ Legacy catalog read failed:", error.message);
+  }
+
+  // 2. Live portal fallback (catalog khaali / shape alag ho to)
+  if (!pairs.length) {
+    try {
+      const sessions = (await getSessions()).filter((session) =>
+        sessionHasYear(session, targetYear)
+      );
+
+      for (const session of sessions) {
+        let exams = [];
+
+        try {
+          exams = await getExamTypes(session.value);
+        } catch (_) {
+          continue;
+        }
+
+        for (const exam of exams) {
+          let courses = [];
+
+          try {
+            courses = await getCourses(session.value, exam.value);
+          } catch (_) {
+            continue;
+          }
+
+          for (const course of courses) {
+            stats.live++;
+
+            pairs.push({ session, exam, course });
+          }
+        }
+      }
+    } catch (error) {
+      console.warn("⚠️ Legacy live scan failed:", error.message);
+    }
+  }
+
+  stats.pairs = pairs.length;
+
+  const combos = [];
+
+  const consider = ({ session, exam, course }, relaxed) => {
+    const isVoc = VOC_RE.test(optionText(exam));
+
+    const examOk = relaxed
+      ? program.kind === "VOC"
+        ? isVoc
+        : !isVoc
+      : examKindOk(program.kind, exam, false);
+
+    if (!examOk) {
+      return;
+    }
+
+    stats.examOk++;
+
+    const courseText = optionText(course);
+
+    const info = safeClassify(course);
+
+    const seq = info.seq || partNo(courseText);
+
+    if (strictRegular) {
+      if (VOC_RE.test(courseText)) return;
+
+      // Relaxed pass me stream ignore (profile.stream galat ho sakta hai);
+      // PDF verify hi final decide karega.
+      if (!relaxed && !courseMatchesStream(stream, courseText)) return;
+
+      if (![1, 2, 3].includes(seq)) return;
+    }
+
+    stats.courseOk++;
+
+    let subjectScore = 0;
+
+    if (code && courseText.includes(code)) subjectScore += 100;
+    if (name && courseText.includes(name)) subjectScore += 50;
+
+    combos.push({
+      session,
+      exam,
+      course,
+      subjectScore,
+      seq: seq || 99,
+      stream: info.stream || stream,
+    });
+  };
+
+  let usedRelaxed = false;
+
+  for (const relaxed of [false, true]) {
+    if (combos.length) break;
+
+    usedRelaxed = relaxed;
+
+    for (const pair of pairs) {
+      consider(pair, relaxed);
+    }
+  }
+
+  console.log(
+    `🔎 LEGACY ${targetYear}: catalog=${stats.catalog} live=${stats.live} ` +
+      `pairs=${stats.pairs} exam=${stats.examOk} course=${stats.courseOk} ` +
+      `combos=${combos.length}${usedRelaxed ? " (relaxed)" : ""}`
+  );
+
+  // Portal ki asli session value pehle, phir YEAR-XXXX.
+  const verifyCombo = async (item) => {
+    /*
+     * ONLY legacy 3-year UG Regular:
+     *
+     * Portal se jo exam/course mila hai usko primary
+     * candidate rakho, lekin PDF directory ko blindly
+     * exam.value/course.value mat mano.
+     *
+     * Example:
+     * Portal option  = General
+     * Actual PDF     = Regular/BA-I
+     *
+     * Isliye value + text + legacy Regular/General
+     * candidates automatically verify honge.
+     */
+
+    const uniqueValues = (values) => [
+      ...new Set(
+        values
+          .map((value) => String(value || "").trim())
+          .filter(Boolean)
+      ),
+    ];
+
+    const sessionValues = uniqueValues([
+      item.session && item.session.value,
+      item.session && item.session.text,
+      fallbackSession.value,
+      fallbackSession.text,
+    ]);
+
+    const examValues = uniqueValues([
+      item.exam && item.exam.value,
+      item.exam && item.exam.text,
+
+      /*
+       * ONLY old UG Regular PDF discovery.
+       * Ye program type decide nahi karta.
+       * Sirf URL directory candidates hain.
+       */
+      ...(strictRegular && Number(program.startYear) <= 2022
+        ? ["Regular", "General"]
+        : []),
+    ]);
+
+    const courseValues = uniqueValues([
+      item.course && item.course.value,
+      item.course && item.course.text,
+    ]);
+
+    for (const sessionValue of sessionValues) {
+      for (const examValue of examValues) {
+        for (const courseValue of courseValues) {
+          const url = buildKnownPdfUrl({
+            session: sessionValue,
+            examType: examValue,
+            course: courseValue,
+            roll,
+          });
+
+          if (!url) {
+            continue;
+          }
+
+          try {
+            if (await verifyPdfDirect(url)) {
+              console.log(
+                `✅ LEGACY PDF FOUND: ` +
+                  `${sessionValue}/${examValue}/${courseValue}/${roll}.pdf`
+              );
+
+              return {
+                url,
+                session:
+                  sessionValue === item.session?.value
+                    ? item.session
+                    : {
+                        value: sessionValue,
+                        text: sessionValue,
+                      },
+              };
+            }
+          } catch (_) {}
+        }
+      }
+    }
+
+    return null;
+  };
+  const toEntry = (item, hit) => ({
+    session: hit.session,
+    exam: item.exam,
+    course: item.course,
+    stream: item.stream || stream,
+    url: hit.url,
+    part: item.seq,
+  });
+
+  // ---- Tier 1: Part-I/II/III wale courses ----
+  const exactSubject = combos.filter((item) => item.subjectScore > 0);
+
+  const candidates = (exactSubject.length ? exactSubject : combos).sort(
+    (a, b) =>
+      b.subjectScore - a.subjectScore ||
+      examRank(a.exam) - examRank(b.exam) ||
+      a.seq - b.seq
+  );
+
+  const entries = [];
+  const parts = new Set();
+
+  for (const item of candidates) {
+    if (strictRegular && parts.has(item.seq)) {
+      continue;
+    }
+
+    const hit = await verifyCombo(item);
+
+    if (!hit) {
+      continue;
+    }
+
+    entries.push(toEntry(item, hit));
+
+    if (strictRegular) {
+      parts.add(item.seq);
+
+      if (parts.has(1) && parts.has(2) && parts.has(3)) {
+        break;
+      }
+    } else {
+      break;
+    }
+  }
+
+  // ---- Tier 2/3: Part naam na mile to semester / koi bhi course ----
+  // Tier 2: stream filter ke saath, Tier 3: bina stream filter (profile ki stream galat ho to).
+  for (const useStream of [true, false]) {
+    if (entries.length) break;
+
+    const loose = [];
+    const seenKeys = new Set();
+
+    for (const { session, exam, course } of pairs) {
+      const isVocExam = VOC_RE.test(optionText(exam));
+
+      if (program.kind === "VOC" ? !isVocExam : isVocExam) {
+        continue;
+      }
+
+      const courseText = optionText(course);
+
+      if (strictRegular) {
+        if (VOC_RE.test(courseText)) continue;
+
+        if (useStream && !courseMatchesStream(stream, courseText)) continue;
+      }
+
+      const key = `${session.value}|${exam.value}|${course.value}`;
+
+      if (seenKeys.has(key)) continue;
+
+      seenKeys.add(key);
+
+      const info = safeClassify(course);
+
+      let subjectScore = 0;
+
+      if (code && courseText.includes(code)) subjectScore += 100;
+      if (name && courseText.includes(name)) subjectScore += 50;
+
+      loose.push({
+        session,
+        exam,
+        course,
+        subjectScore,
+        seq: info.seq || partNo(courseText) || semNo(courseText) || 99,
+        stream: info.stream || stream,
+      });
+    }
+
+    const exactLoose = loose.filter((item) => item.subjectScore > 0);
+
+    const list = (exactLoose.length ? exactLoose : loose)
+      .sort(
+        (a, b) =>
+          b.subjectScore - a.subjectScore ||
+          examRank(a.exam) - examRank(b.exam) ||
+          a.seq - b.seq
+      )
+      .slice(0, 100);
+
+    const hits = new Array(list.length).fill(null);
+
+    await pool(6, list, async (item, index) => {
+      hits[index] = await verifyCombo(item);
+    });
+
+    const seenUrls = new Set();
+
+    list.forEach((item, index) => {
+      const hit = hits[index];
+
+      if (hit && !seenUrls.has(hit.url)) {
+        seenUrls.add(hit.url);
+
+        entries.push(toEntry(item, hit));
+      }
+    });
+
+    console.log(
+      `🔎 LEGACY ${targetYear}: tier${useStream ? 2 : 3} (${
+        useStream ? "stream=" + (stream || "-") : "no stream filter"
+      }) checked=${list.length} found=${entries.length}`
+    );
+
+    if (!entries.length && list.length) {
+      const examNames = [...new Set(list.map((i) => clean(i.exam.text)))];
+      const courseNames = [...new Set(list.map((i) => clean(i.course.text)))];
+
+      console.log(
+        `🔎 LEGACY ${targetYear}: exams=[${examNames
+          .slice(0, 8)
+          .join(" | ")}] courses=[${courseNames.slice(0, 12).join(" | ")}]`
+      );
+    }
+  }
+
+  return entries.sort((a, b) => Number(a.part || 99) - Number(b.part || 99));
+}
+
+/*
+=========================================================
+MAIN LOCKER SCAN
+
+1. Legacy UG (startYear <= 2022) -> Part-I/II/III (fixed YEAR session)
+2. Baaki -> full scan
+3. Targeted scan fallback
+=========================================================
+*/
+
+async function scanLocker(profile) {
+  const program = programOf(profile);
+
+  if (process.env.LOCKER_FULL_SCAN !== "0") {
+    try {
+      const scan = await fullScan.scanAll(profile.roll, {
+        firstOnly: false,
+      });
+
+      const entries =
+        scan && Array.isArray(scan.entries)
+          ? scan.entries
+          : [];
+
+      if (entries.length) {
+        return entries;
+      }
+    } catch (error) {
+      console.warn("⚠️ Locker full scan failed:", error.message);
+    }
+  }
+
+  try {
+    return await scanLockerTargeted(profile);
+  } catch (error) {
+    console.warn("⚠️ Locker targeted scan failed:", error.message);
+  }
+
+  return [];
+}
+
+async function mergePdfBuffers(items) {
+  const merged = await PDFDocument.create();
+
+  for (const item of items) {
+    try {
+      const source = await PDFDocument.load(item.buffer);
+
+      const pages = await merged.copyPages(source, source.getPageIndices());
+
+      for (const page of pages) {
+        merged.addPage(page);
+      }
+    } catch (error) {
+      console.error(
+        `⚠️ PDF merge failed (${item.entry.label}):`,
+        error.message
+      );
+    }
+  }
+
+  const pageCount = merged.getPageCount();
+
+  if (!pageCount) {
+    return null;
+  }
+
+  return { bytes: await merged.save(), pages: pageCount };
+}
+
+async function sendLocker(bot, chatId, profile, options = {}) {
+  const channelId = options.channelId || "";
+
+  const scanned = await scanLocker(profile);
+
+  // Har entry ka label pakka rakho (filename / archive collision se bachne ke liye).
+  const entries = scanned.map((entry) =>
+    entry.label
+      ? entry
+      : { ...entry, label: clean(entry.course?.text) || "Result" }
+  );
+
+  if (!profile.locker || typeof profile.locker !== "object") {
+    profile.locker = {};
+  }
+
+  const base = programOf(profile);
+
+  const needMerge = entries.length >= 2;
+
+  let sent = 0;
+
+  const identityBlock = () =>
+    `🧑‍🎓 <b>Name:</b> ${escapeHtml(profile.name || "-")}\n` +
+    `🎫 <b>Roll No:</b> <code>${escapeHtml(profile.roll || "-")}</code>\n` +
+    `🆔 <b>Registration No:</b> <code>${escapeHtml(
+      profile.regNo || "-"
+    )}</code>\n` +
+    `📚 <b>Subject:</b> ${escapeHtml(profile.subject || "-")}\n` +
+    `🏫 <b>College:</b> ${escapeHtml(
+      profile.collegeName || profile.college || "-"
+    )}\n` +
+    `🏷️ <b>Type:</b> ${escapeHtml(profile.type || "-")}\n` +
+    `📅 <b>Session:</b> ${escapeHtml(
+      profile.session || base.sessionLabel || "-"
+    )}`;
+
+  const buildLockerCaption = (entry) =>
+    `📄 <b>${escapeHtml(entry.label || "Result")}</b>\n\n${identityBlock()}`;
+
+  // Har locker result ki ek copy channel par bhi (ek file sirf ek baar).
+  const copyToChannel = async (entry, message) => {
+    if (!channelId || !message?.message_id) {
+      return;
+    }
+
+    const record = profile.locker[entry.url];
+
+    if (!record || record.channelSent) {
+      return;
+    }
+
+    try {
+      await bot.copyMessage(channelId, chatId, message.message_id, {
+        caption: buildLockerCaption(entry),
+        parse_mode: "HTML",
+      });
+
+      record.channelSent = true;
+    } catch (error) {
+      console.error(
+        `⚠️ Channel copy failed (${entry.label}):`,
+        error.message
+      );
+    }
+  };
+
+  const needsIdentity = () => !profile.name || !profile.regNo;
+
+  const learnIdentity = async (buffer) => {
+    if (!needsIdentity()) {
+      return;
+    }
+
+    try {
+      const found = await readDetailsFromBuffer(buffer, profile.roll);
+
+      if (found.name && !profile.name) {
+        profile.name = found.name;
+        profile.namePending = false;
+      }
+
+      if (found.regNo && !profile.regNo) {
+        profile.regNo = found.regNo;
+      }
+    } catch (error) {
+      console.error("⚠️ Locker identity read failed:", error.message);
+    }
+  };
+
+  /*
+   * MEGA archive lookup:
+   *   1. LOCKER/ROLL/ROLL_LABEL.pdf
+   *   2. INDIVIDUAL PDF/ROLL.pdf (sirf jab locker me ek hi result ho,
+   *      warna har entry ko ek hi PDF mil jaata)
+   */
+  const fetchArchived = async (filename, allowIndividual) => {
+    try {
+      await initializeArchive();
+
+      if (await findLockerPdf({ roll: profile.roll, filename })) {
+        const buf = await getLockerPdf({ roll: profile.roll, filename });
+
+        if (Buffer.isBuffer(buf)) {
+          console.log(`♻️ MEGA LOCKER archive used: ${filename}`);
+
+          return buf;
+        }
+      }
+
+      if (allowIndividual) {
+        const individualName = `${profile.roll}.pdf`;
+
+        if (
+          await findIndividualPdf({
+            roll: profile.roll,
+            filename: individualName,
+          })
+        ) {
+          const buf = await getIndividualPdf({
+            roll: profile.roll,
+            filename: individualName,
+          });
+
+          if (Buffer.isBuffer(buf)) {
+            console.log(`♻️ MEGA INDIVIDUAL archive used: ${individualName}`);
+
+            return buf;
+          }
+        }
+      }
+    } catch (error) {
+      console.error(
+        "⚠️ MEGA archive lookup failed:",
+        error?.message || error
+      );
+    }
+
+    return null;
+  };
+
+  /*
+   * Bina file_id wale PDFs ko parallel (max 4) prefetch karo.
+   * Send order entries ke order me hi rahega.
+   */
+  const prefetched = new Map();
+
+  const limit = createLimiter(4);
+
+  for (const entry of entries) {
+    if (profile.locker[entry.url]?.fileId) {
+      continue;
+    }
+
+    const task = limit(() => downloadPdfBuffer(entry.url));
+
+    task.catch(() => {});
+
+    prefetched.set(entry.url, task);
+  }
+
+  const getPortalBuffer = async (url) => {
+    const task = prefetched.get(url);
+
+    prefetched.delete(url);
+
+    if (task) {
+      try {
+        return await task;
+      } catch (_) {}
+    }
+
+    return downloadPdfBuffer(url);
+  };
+
+  // Final merged PDF inhi original buffers se banega.
+  const mergeItems = [];
+
+  for (const entry of entries) {
+    const saved = profile.locker[entry.url];
+
+    const lockerFilename = `${profile.roll}_${safeName(entry.label)}.pdf`;
+
+    try {
+      /*
+       * Existing Telegram file_id -> seedha resend.
+       */
+      if (saved && saved.fileId) {
+        let resent = null;
+
+        try {
+          resent = await bot.sendDocument(chatId, saved.fileId, {
+            caption: buildLockerCaption(entry),
+            parse_mode: "HTML",
+          });
+        } catch (_) {
+          // file_id stale/invalid -> neeche fresh flow chalega.
+        }
+
+        if (resent) {
+          sent++;
+
+          await copyToChannel(entry, resent);
+
+          // Buffer sirf tab chahiye jab merge ho ya naam/reg no missing ho.
+          if (needMerge || needsIdentity()) {
+            let buffer = await fetchArchived(lockerFilename, !needMerge);
+
+            if (!buffer) {
+              try {
+                buffer = await downloadPdfBuffer(entry.url);
+
+                console.log(`🌐 Merge source: Portal → ${lockerFilename}`);
+              } catch (downloadError) {
+                console.error(
+                  `⚠️ Merge download failed (${entry.label}):`,
+                  downloadError?.message || downloadError
+                );
+              }
+            }
+
+            if (Buffer.isBuffer(buffer)) {
+              await learnIdentity(buffer);
+
+              if (needMerge) {
+                mergeItems.push({ entry, buffer });
+              }
+            }
+          }
+
+          prefetched.delete(entry.url);
+
+          continue;
+        }
+      }
+
+      /*
+       * Fresh flow: MEGA archive -> Portal.
+       */
+      let buffer = await fetchArchived(lockerFilename, !needMerge);
+
+      const archiveHit = Boolean(buffer);
+
+      if (buffer) {
+        prefetched.delete(entry.url);
+      } else {
+        buffer = await getPortalBuffer(entry.url);
+
+        console.log(`🌐 MEGA archive miss → Portal: ${lockerFilename}`);
+      }
+
+      await learnIdentity(buffer);
+
+      const message = await bot.sendDocument(
+        chatId,
+        buffer,
+        {
+          caption: buildLockerCaption(entry),
+          parse_mode: "HTML",
+        },
+        {
+          filename: lockerFilename,
+          contentType: "application/pdf",
+        }
+      );
+
+      /*
+       * Original PDF MEGA par archive hoga.
+       * COMPLETE RESULT kabhi archive nahi hota.
+       */
+      if (!archiveHit) {
+        try {
+          const archiveResult = await archiveLockerPdf({
+  buffer,
+  roll: profile.roll,
+  studentName: profile.name,
+  session: profile.session || base.sessionLabel,
+  examType: entry.examType || entry.type || entry.label,
+  course: profile.course || profile.subject,
+  semester: entry.semester || entry.label,
+  filename: lockerFilename,
+  label: entry.label,
+});
+
+          if (
+            archiveResult?.ok &&
+            (archiveResult.uploaded || archiveResult.existed)
+          ) {
+            console.log(`☁️ Locker PDF archived to MEGA: ${lockerFilename}`);
+          } else if (archiveResult?.limitReached) {
+            console.warn(`⚠️ Locker MEGA limit reached: ${lockerFilename}`);
+          } else {
+            console.warn(
+              `⚠️ Locker MEGA archive returned unexpected result: ${lockerFilename}`
+            );
+          }
+        } catch (archiveError) {
+          console.error(
+            "⚠️ MEGA Locker archive upload failed:",
+            archiveError?.message || archiveError
+          );
+        }
+      }
+
+      // Telegram file_id save karo.
+      profile.locker[entry.url] = {
+        label: entry.label,
+        fileId: message?.document?.file_id || null,
+        channelSent: false,
+      };
+
+      sent++;
+
+      await copyToChannel(entry, message);
+
+      if (needMerge) {
+        mergeItems.push({ entry, buffer });
+      }
+    } catch (error) {
+      console.error(
+        `⚠️ Locker send failed (${entry.label}):`,
+        error?.message || error
+      );
+    }
+  }
+
+  // Profile save (merge se pehle).
+  await store.save(profile);
+
+  /*
+   * FINAL COMPLETE RESULT MERGE
+   *   1 PDF   -> merged copy nahi
+   *   2+ PDFs -> sab successfully mile PDFs merge
+   */
+  if (mergeItems.length >= 2) {
+    try {
+      const merged = await mergePdfBuffers(mergeItems);
+
+      if (merged) {
+        const mergedFilename =
+          `${safeName(profile.name || "STUDENT")}_${profile.roll}_` +
+          `${safeName(profile.subject || "RESULT")}_` +
+          `${safeName(profile.session || base.sessionLabel || "SESSION")}_COMPLETE_RESULT.pdf`;
+
+        const mergedCaption =
+          `📦 <b>COMPLETE RESULT / LOCKER</b>\n\n${identityBlock()}\n\n` +
+          `📑 <b>Contains:</b> ${mergeItems.length} Result PDFs`;
+
+        const mergedMessage = await bot.sendDocument(
+          chatId,
+          Buffer.from(merged.bytes),
+          {
+            caption: mergedCaption,
+            parse_mode: "HTML",
+          },
+          {
+            filename: mergedFilename,
+            contentType: "application/pdf",
+          }
+        );
+
+        if (
+          channelId &&
+          mergedMessage?.message_id &&
+          String(channelId) !== String(chatId)
+        ) {
+          try {
+            await bot.copyMessage(channelId, chatId, mergedMessage.message_id, {
+              caption: mergedCaption,
+              parse_mode: "HTML",
+            });
+
+            console.log(
+              `✅ Complete locker merged copied to channel: ${channelId}`
+            );
+          } catch (channelError) {
+            console.error(
+              "⚠️ Complete locker merged channel copy failed:",
+              channelError?.response?.body || channelError.message
+            );
+          }
+        }
+
+        console.log(
+          `✅ Complete locker merged: ${mergeItems.length} PDFs, ${merged.pages} pages`
+        );
+      }
+    } catch (error) {
+      console.error("❌ Complete locker merge failed:", error.message);
+    }
+  }
+
+  return {
+    sent,
+    total: entries.length,
+  };
+}
+
+/*
+=========================================================
+OWNER DEBUG
+=========================================================
+*/
+
+async function traceLegacy(profile, base) {
+  const lines = [];
+
+  const year = Number(base.startYear);
+
+  lines.push(`\n=== LEGACY TRACE (target YEAR-${year}) ===`);
+
+  let sessions = [];
+
+  try {
+    sessions = await getSessions();
+  } catch (error) {
+    return [...lines, `getSessions failed: ${error.message}`];
+  }
+
+  lines.push(
+    `all sessions (${sessions.length}): ${sessions
+      .map((o) => `${clean(o.text)}=${o.value}`)
+      .join(" | ")
+      .slice(0, 900)}`
+  );
+
+  const matched = sessions.filter((session) => sessionHasYear(session, year));
+
+  lines.push(
+    `sessions matching ${year}: ${
+      matched.length
+        ? matched.map((o) => `"${clean(o.text)}" (${o.value})`).join(", ")
+        : "NONE  <-- session naam me 4-digit year nahi hai ya portal me ye session hai hi nahi"
+    }`
+  );
+
+  for (const session of matched.slice(0, 3)) {
+    let exams = [];
+
+    try {
+      exams = await getExamTypes(session.value);
+    } catch (error) {
+      lines.push(`  exam types failed (${session.value}): ${error.message}`);
+
+      continue;
+    }
+
+    lines.push(
+      `  [${session.value}] exams: ${exams
+        .map((o) => `"${clean(o.text)}"=${o.value}`)
+        .join(", ")}`
+    );
+
+    for (const exam of exams.slice(0, 4)) {
+      let courses = [];
+
+      try {
+        courses = await getCourses(session.value, exam.value);
+      } catch (error) {
+        lines.push(`    courses failed (${exam.value}): ${error.message}`);
+
+        continue;
+      }
+
+      lines.push(
+        `    exam "${clean(exam.text)}" (strict ok: ${examKindOk(
+          base.kind,
+          exam,
+          false
+        )}): ${courses.length} courses -> ${courses
+          .slice(0, 12)
+          .map((o) => `"${clean(o.text)}"`)
+          .join(", ")}`
+      );
+
+      for (const course of courses.slice(0, 6)) {
+        const url = buildKnownPdfUrl({
+          session: session.value,
+          examType: exam.value,
+          course: course.value,
+          roll: profile.roll,
+        });
+
+        let ok = false;
+
+        try {
+          ok = await verifyPdfDirect(url);
+        } catch (_) {}
+
+        lines.push(`      ${ok ? "FOUND" : "miss "} ${url}`);
+      }
+    }
+  }
+
+  return lines;
+}
+
+async function traceLocker(profile) {
+  const lines = [];
+
+  const base = programOf(profile);
+
+  lines.push(
+    `roll=${profile.roll} type=${profile.type} regYY=${profile.regYY} stream=${
+      profile.stream || "-"
+    }`
+  );
+
+  lines.push(
+    `portalYear=${base.portalYear} duration=${base.duration} sessionLabel=${base.sessionLabel}`
+  );
+
+  const sessions = await getSessions();
+
+  lines.push(`portal sessions: ${sessions.length}`);
+
+  const years =
+    base.level === "PG"
+      ? [base.portalYear]
+      : Array.from({ length: base.duration }, (_, i) => base.portalYear + i);
+
+  for (const year of years) {
+    const program = { ...base, portalYear: year };
+
+    const picked = pickSessions(sessions, program);
+
+    lines.push(
+      `\nyear ${year}: matched sessions = ${
+        picked.length
+          ? picked.map((o) => `"${clean(o.text)}"`).join(", ")
+          : "NONE"
+      }`
+    );
+
+    if (!picked.length) {
+      lines.push(
+        `all sessions: ${sessions
+          .map((o) => clean(o.text))
+          .join(" | ")
+          .slice(0, 500)}`
+      );
+
+      continue;
+    }
+
+    for (const session of picked) {
+      let exams = [];
+
+      try {
+        exams = await getExamTypes(session.value);
+      } catch (error) {
+        lines.push(`  exam types failed: ${error.message}`);
+
+        continue;
+      }
+
+      const exam = pickExam(exams, program, session);
+
+      lines.push(
+        `  exam options: ${exams.map((o) => `"${clean(o.text)}"`).join(", ")}`
+      );
+
+      lines.push(`  picked exam: ${exam ? `"${clean(exam.text)}"` : "NONE"}`);
+
+      if (!exam) {
+        continue;
+      }
+
+      let courses = [];
+
+      try {
+        courses = await getCourses(session.value, exam.value);
+      } catch (error) {
+        lines.push(`  courses failed: ${error.message}`);
+
+        continue;
+      }
+
+      const usable = filterCourses(courses, program, profile.stream);
+
+      lines.push(
+        `  courses: ${courses.length}, usable after filter: ${
+          usable.length
+        } -> ${usable
+          .slice(0, 8)
+          .map((o) => `"${clean(o.text)}"`)
+          .join(", ")}`
+      );
+
+      for (const course of usable.slice(0, 2)) {
+        const url = buildKnownPdfUrl({
+          session: session.value,
+          examType: exam.value,
+          course: course.value,
+          roll: profile.roll,
+        });
+
+        const ok = await verifyPdfDirect(url);
+
+        lines.push(`  ${ok ? "FOUND" : "miss "} ${url}`);
+      }
+    }
+  }
+
+  if (isLegacyProgram(base)) {
+    lines.push(...(await traceLegacy(profile, base)));
+  }
+
+  return lines.join("\n");
+}
+
+// Owner debug: PDF ka raw text + extractor output
+async function debugProfilePdf(profile) {
+  let url = Object.keys(profile.locker || {})[0];
+
+  if (!url) {
+    const entries = await scanLocker(profile);
+
+    url = entries[0]?.url;
+  }
+
+  if (!url) {
+    return "Is profile ke liye abhi koi result PDF nahi mila.";
+  }
+
+  const buffer = await downloadPdfBuffer(url);
+
+  const tmp = path.join(os.tmpdir(), `ppu-debug-${Date.now()}.pdf`);
+
+  await fs.promises.writeFile(tmp, buffer);
+
+  try {
+    let details = {};
+
+    try {
+      details = (await extractResultDetails(tmp)) || {};
+    } catch (error) {
+      details = { error: error.message };
+    }
+
+    let text = "";
+
+    try {
+      text = await extractTextFromPdfFile(tmp);
+    } catch (error) {
+      text = `(text read failed: ${error.message})`;
+    }
+
+    return (
+      `URL: ${url}\n\n` +
+      `extractResultDetails keys: ${Object.keys(details).join(", ")}\n` +
+      `fuzzy name: "${fuzzyField(details, "name")}" | fuzzy reg: "${fuzzyField(
+        details,
+        "reg"
+      )}"\n` +
+      `text parse: ${JSON.stringify(parseIdentityText(text, profile.roll))}\n\n` +
+      `TEXT (first 1800 chars):\n${text.slice(0, 1800)}`
+    );
+  } finally {
+    await fs.promises.unlink(tmp).catch(() => {});
+  }
+}
+
+/*
+=========================================================
+BULK / SUBJECT-WISE / COLLEGE-WISE HOOK
+
+Kisi bhi roll ka result entries me deta hai (purane UG sessions ke liye bhi).
+  opts.type    -> "UG REG" | "UG VOC" | "PG REG" | "PG VOC" (default: Master CSV se)
+  opts.subject -> subject naam (default: Master CSV se)
+  opts.stream  -> arts | science | commerce (default: Master CSV se)
+  opts.all     -> legacy UG me Part-I/II/III teeno (default: sirf pehla)
+Returns [{ session, exam, course, stream, url }]
+=========================================================
+*/
+
+async function findResultsForRoll(roll, opts = {}) {
+  const parsed = parseRoll(roll);
+
+  if (!parsed) {
+    return [];
+  }
+
+  const match =
+    findCsvMatches(parsed).find((m) => !opts.type || m.type === opts.type) ||
+    null;
+
+  const type = opts.type || match?.type || "UG REG";
+
+  const program = computeProgram(
+    type,
+    parsed.regYY,
+    (match && (masterDuration(match) || Number(match.duration))) || 0
+  );
+
+  const stream = opts.stream || (match ? streamOf(match) : null);
+
+  const subject = opts.subject || match?.subject || "";
+
+  if (isLegacyProgram(program)) {
+    const entries = await scanLegacyCore(
+      program,
+      stream,
+      parsed.roll,
+      parsed.subjectCode,
+      subject
+    );
+
+    return opts.all ? entries : entries.slice(0, 1);
+  }
+
+  const found = await findFirstResult(
+    program,
+    stream,
+    parsed.roll,
+    parsed.subjectCode,
+    subject
+  );
+
+  return found ? [found] : [];
+}
+
+module.exports = {
+  traceLocker,
+  findResultsForRoll,
+  debugProfilePdf,
+  parseRoll,
+  classifyCsv,
+  findCsvMatches,
+  computeProgram,
+  rollChangesLeft,
+  MAX_ROLL_CHANGES,
+  programOf,
+  isMasterCsv,
+  parseDurationYears,
+  pickSessions,
+  pickExam,
+  pickFirstCourse,
+  courseSeq,
+  createProfile,
+  fuzzyField,
+  parseIdentityText,
+  refreshPendingName,
+  formatProfile,
+  formatProfileForOwner,
+  sendLocker,
+  fullScanReportChunks: (roll) => fullScan.scanReportChunks(roll),
+};
+
+
+
+

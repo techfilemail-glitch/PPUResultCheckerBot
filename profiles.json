@@ -1,0 +1,267 @@
+{
+  "1991415479": {
+    "telegramId": "1991415479",
+    "username": "TheMoonlightPhoenix",
+    "roll": "2620641060085",
+    "regYY": "26",
+    "regNo": "",
+    "name": "NIBHA KUMARI",
+    "namePending": false,
+    "collegeCode": "206",
+    "collegeName": "G.J. College, Rambagh, Bihta",
+    "subject": "Economics",
+    "subjectCode": "4106",
+    "csvFile": "Master CSV.csv",
+    "type": "UG REG",
+    "stream": "arts",
+    "duration": 4,
+    "sessionLabel": "2025-29",
+    "portal": {
+      "session": "YEAR-2026",
+      "sessionText": "YEAR-2026",
+      "examType": "UG",
+      "examTypeText": "UG",
+      "course": "BA(SEM-I)",
+      "courseText": "BA(SEM-I)"
+    },
+    "locker": {
+      "https://lu.indiaexaminfo.co.in/PATLIPUTRA/YEAR-2026/UG/BA(SEM-I)/2620641060085.pdf": {
+        "label": "BA(SEM-I) • YEAR-2026",
+        "fileId": "BQACAgUAAxkDAAILAAFqw0m2IIvw7aTMbWbNzSxPK-Fo5gACJyMAAvkAARlWQZ_BV5-ypd09BA",
+        "channelSent": true
+      },
+      "https://lu.indiaexaminfo.co.in/PATLIPUTRA/YEAR-2026/UG/BA(SEM-II)/2620641060085.pdf": {
+        "label": "BA(SEM-II) • YEAR-2026",
+        "fileId": "BQACAgUAAxkDAAILAWrDScRWKzxliT0qRP_9GJXineIIAAIoIwAC-QABGVYGY82y3a1uQT0E",
+        "channelSent": true
+      }
+    },
+    "createdAt": "2026-10-05T06:12:03.354Z",
+    "updatedAt": "2026-10-05T06:55:00.512Z"
+  },
+  "8578619711": {
+    "telegramId": "8578619711",
+    "username": "Junior_TGF",
+    "roll": "2520641060180",
+    "regYY": "25",
+    "regNo": "202420600117",
+    "name": "SUBIN KUMAR",
+    "namePending": false,
+    "collegeCode": "206",
+    "collegeName": "G.J. College, Rambagh, Bihta",
+    "subject": "Economics",
+    "subjectCode": "4106",
+    "csvFile": "Master CSV.csv",
+    "type": "UG REG",
+    "stream": "arts",
+    "duration": 4,
+    "sessionLabel": "2024-28",
+    "portal": {
+      "session": "YEAR-2025",
+      "sessionText": "YEAR-2025",
+      "examType": "UG",
+      "examTypeText": "UG",
+      "course": "BA(SEM-I)",
+      "courseText": "BA(SEM-I)"
+    },
+    "locker": {
+      "https://lu.indiaexaminfo.co.in/PATLIPUTRA/YEAR-2025/UG/BA(SEM-I)/2520641060180.pdf": {
+        "label": "BA(SEM-I) • YEAR-2025",
+        "fileId": "BQACAgUAAxkDAAIOMWrGDc9XOYZdvCpTBZBwsRAJdBE6AALMIAACF5AwVlk9U1h2LhxmPQQ",
+        "channelSent": true
+      },
+      "https://lu.indiaexaminfo.co.in/PATLIPUTRA/YEAR-2025/UG/BA(SEM-II)/2520641060180.pdf": {
+        "label": "BA(SEM-II) • YEAR-2025",
+        "fileId": "BQACAgUAAxkDAAIOMmrGDdGn1E40Epm3OH3WWk81uYTmAALNIAACF5AwVnmgVdh7LH1NPQQ",
+        "channelSent": true
+      },
+      "https://lu.indiaexaminfo.co.in/PATLIPUTRA/YEAR-2026/UG/BA(SEM-III)/2520641060180.pdf": {
+        "label": "BA(SEM-III) • YEAR-2026",
+        "fileId": "BQACAgUAAxkDAAIOM2rGDdRM5py9ZakHJRwlUqF_Um5CAALOIAACF5AwVoi6AAH8OWAlWz0E",
+        "channelSent": true
+      },
+      "https://lu.indiaexaminfo.co.in/PATLIPUTRA/YEAR-2026/UG/BA(SEM-IV)/2520641060180.pdf": {
+        "label": "BA(SEM-IV) • YEAR-2026",
+        "fileId": "BQACAgUAAxkDAAIONGrGDdfqGlGNtRX9f7x0QHWUX3JWAALPIAACF5AwVm9FTCHqqV3YPQQ",
+        "channelSent": true
+      }
+    },
+    "createdAt": "2026-10-05T05:06:26.029Z",
+    "updatedAt": "2026-10-09T17:29:00.062Z"
+  },
+  "6502801651": {
+    "telegramId": "6502801651",
+    "username": "Kiran1O5",
+    "roll": "2521551070090",
+    "regYY": "25",
+    "regNo": "",
+    "name": "KIRAN UDIT CHOUHAN",
+    "namePending": false,
+    "collegeCode": "215",
+    "collegeName": "Nalanda Mahila College, Biharsharif",
+    "subject": "Zoology",
+    "subjectCode": "5107",
+    "csvFile": "UGT CODE.csv",
+    "type": "UG REG",
+    "stream": "science",
+    "duration": 4,
+    "sessionLabel": "2024-28",
+    "portal": {
+      "session": "YEAR-2025",
+      "sessionText": "YEAR-2025",
+      "examType": "UG",
+      "examTypeText": "UG",
+      "course": "BSC(SEM-I)",
+      "courseText": "BSC(SEM-I)"
+    },
+    "locker": {
+      "https://lu.indiaexaminfo.co.in/PATLIPUTRA/YEAR-2025/UG/BSC(SEM-I)/2521551070090.pdf": {
+        "label": "BSC(SEM-I) • YEAR-2025",
+        "fileId": "BQACAgUAAxkDAAIKVmrDMf0K0V6d7tJJ5SH9sYGkwaTRAALyHQACGN0YVjHBSUc7j4QwPQQ",
+        "channelSent": true
+      },
+      "https://lu.indiaexaminfo.co.in/PATLIPUTRA/YEAR-2025/UG/BSC(SEM-II)/2521551070090.pdf": {
+        "label": "BSC(SEM-II) • YEAR-2025",
+        "fileId": "BQACAgUAAxkDAAIKV2rDMf9Kh2RzfsXXAl5BcNmNNKbxAALzHQACGN0YVgg19ZluvgX2PQQ",
+        "channelSent": true
+      },
+      "https://lu.indiaexaminfo.co.in/PATLIPUTRA/YEAR-2026/UG/BSC(SEM-III)/2521551070090.pdf": {
+        "label": "BSC(SEM-III) • YEAR-2026",
+        "fileId": "BQACAgUAAxkDAAIKWGrDMgEYHvf6JSyH2KsNhSocjr-zAAL0HQACGN0YVs-ksFFg2K0WPQQ",
+        "channelSent": true
+      },
+      "https://lu.indiaexaminfo.co.in/PATLIPUTRA/YEAR-2026/UG/BSC(SEM-IV)/2521551070090.pdf": {
+        "label": "BSC(SEM-IV) • YEAR-2026",
+        "fileId": "BQACAgUAAxkDAAIKWWrDMgM2FQo64mb6z8U9TOu-lju2AAL1HQACGN0YVg3xpz0-aofYPQQ",
+        "channelSent": true
+      }
+    },
+    "createdAt": "2026-10-05T05:12:11.080Z",
+    "updatedAt": "2026-10-05T05:13:40.000Z"
+  },
+  "8594454918": {
+    "telegramId": "8594454918",
+    "username": "CTal211",
+    "roll": "2520641060189",
+    "regYY": "25",
+    "regNo": "",
+    "name": "GAUTAM KUMAR",
+    "namePending": false,
+    "collegeCode": "206",
+    "collegeName": "G.J. College, Rambagh, Bihta",
+    "subject": "Economics",
+    "subjectCode": "4106",
+    "csvFile": "Master CSV.csv",
+    "type": "UG REG",
+    "stream": "arts",
+    "duration": 4,
+    "sessionLabel": "2024-28",
+    "portal": {
+      "session": "YEAR-2025",
+      "sessionText": "YEAR-2025",
+      "examType": "UG",
+      "examTypeText": "UG",
+      "course": "BA(SEM-I)",
+      "courseText": "BA(SEM-I)"
+    },
+    "locker": {
+      "https://lu.indiaexaminfo.co.in/PATLIPUTRA/YEAR-2025/UG/BA(SEM-I)/2520641060189.pdf": {
+        "label": "BA(SEM-I) • YEAR-2025",
+        "fileId": "BQACAgUAAxkDAAILTmrDcGGche7vajDoqwuu37oByVOJAALNKgAC12whVg41A5AAAdLE5z0E",
+        "channelSent": true
+      },
+      "https://lu.indiaexaminfo.co.in/PATLIPUTRA/YEAR-2025/UG/BA(SEM-II)/2520641060189.pdf": {
+        "label": "BA(SEM-II) • YEAR-2025",
+        "fileId": "BQACAgUAAxkDAAILT2rDcGNKCbX-X8nEUOUi_Wtwh5s0AALOKgAC12whVkMimsQx0lu1PQQ",
+        "channelSent": true
+      },
+      "https://lu.indiaexaminfo.co.in/PATLIPUTRA/YEAR-2026/UG/BA(SEM-II)/2520641060189.pdf": {
+        "label": "BA(SEM-II) • YEAR-2026",
+        "fileId": "BQACAgUAAxkDAAILUGrDcGWXGHjYN-6x0MbtZFNjx5GAAALPKgAC12whVndQusaPWLiAPQQ",
+        "channelSent": true
+      },
+      "https://lu.indiaexaminfo.co.in/PATLIPUTRA/YEAR-2026/UG/BA(SEM-III)/2520641060189.pdf": {
+        "label": "BA(SEM-III) • YEAR-2026",
+        "fileId": "BQACAgUAAxkDAAILUWrDcGevlWHNxibo5uxvsIsXersnAALRKgAC12whVtsp-KFzll2EPQQ",
+        "channelSent": true
+      },
+      "https://lu.indiaexaminfo.co.in/PATLIPUTRA/YEAR-2026/UG/BA(SEM-IV)/2520641060189.pdf": {
+        "label": "BA(SEM-IV) • YEAR-2026",
+        "fileId": "BQACAgUAAxkDAAILUmrDcGmx33_CT4xhQjswELqU8fZYAALSKgAC12whVp1swZfL-V0kPQQ",
+        "channelSent": true
+      }
+    },
+    "rollChanges": 1,
+    "createdAt": "2026-10-05T09:36:49.048Z",
+    "updatedAt": "2026-10-05T09:39:51.283Z"
+  },
+  "8262361927": {
+    "telegramId": "8262361927",
+    "username": "SubinShivam",
+    "roll": "2220641060020",
+    "regYY": "22",
+    "regNo": "",
+    "name": "",
+    "namePending": true,
+    "collegeCode": "206",
+    "collegeName": "G.J. College, Rambagh, Bihta",
+    "subject": "Economics",
+    "subjectCode": "4106",
+    "csvFile": "Master CSV.csv",
+    "type": "UG REG",
+    "stream": "arts",
+    "duration": 3,
+    "sessionLabel": "2021-24",
+    "portal": null,
+    "locker": {},
+    "rollChanges": 2,
+    "createdAt": "2026-10-05T15:29:58.214Z",
+    "updatedAt": "2026-10-05T16:10:25.987Z"
+  },
+  "8929138111": {
+    "telegramId": "8929138111",
+    "username": "",
+    "roll": "2520141060010",
+    "regYY": "25",
+    "regNo": "",
+    "name": "",
+    "namePending": true,
+    "collegeCode": "201",
+    "collegeName": "A.N. College, Patna",
+    "subject": "Economics",
+    "subjectCode": "4106",
+    "csvFile": "Master CSV.csv",
+    "type": "UG REG",
+    "stream": "arts",
+    "duration": 4,
+    "sessionLabel": "2024-28",
+    "portal": null,
+    "locker": {},
+    "rollChanges": 0,
+    "createdAt": "2026-10-09T17:29:47.625Z",
+    "updatedAt": "2026-10-09T17:32:19.822Z"
+  },
+  "7328615111": {
+    "telegramId": "7328615111",
+    "username": "quinnshree48",
+    "roll": "2522751010003",
+    "regYY": "25",
+    "regNo": "",
+    "name": "",
+    "namePending": true,
+    "collegeCode": "227",
+    "collegeName": "Rajkiya Mahila Mahavidyalaya, Gulazarbhag, Patna",
+    "subject": "Botany",
+    "subjectCode": "5101",
+    "csvFile": "Master CSV.csv",
+    "type": "UG REG",
+    "stream": "science",
+    "duration": 4,
+    "sessionLabel": "2024-28",
+    "portal": null,
+    "locker": {},
+    "rollChanges": 0,
+    "createdAt": "2026-10-09T17:30:00.928Z",
+    "updatedAt": "2026-10-09T17:32:19.854Z"
+  }
+}

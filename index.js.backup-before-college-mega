@@ -1,0 +1,3924 @@
+﻿require("dotenv").config();
+process.noDeprecation = true; // node-telegram-bot-api content-type warning band
+const TelegramBot = require("node-telegram-bot-api");
+const fs = require("fs");
+const path = require("path");
+const os = require("os");
+const { PDFDocument } = require("pdf-lib");
+const bulkSubject = require("./bulk/subject");
+const bulkCollege = require("./bulk/college");
+
+const profiles = require("./profile-store");
+const studentProfile = require("./student-profile");
+
+const { saveResult, saveResults } = require("./supabase");
+
+const {
+  extractResultDetails,
+  extractResultsFromMergedPdf,
+  buildResultCaption,
+  maskRoll,
+} = require("./result-details");
+
+const {
+  getSessions,
+  getExamTypes,
+  getCourses,
+  checkResult,
+  closeAll,
+  forgetRoll,
+} = require("./result-checker");
+
+const {
+  archiveIndividualPdf,
+  findIndividualPdf,
+  getIndividualPdf,
+  initializeArchive,
+} = require("./pdf-archive");
+
+const BOT_TOKEN = process.env.BOT_TOKEN;
+
+function parseOwnerIds() {
+  const rawValues = [process.env.OWNER_IDS, process.env.OWNER_ID].filter(
+    (value) =>
+      value !== undefined && value !== null && String(value).trim() !== ""
+  );
+
+  const ids = new Set();
+
+  for (const rawValue of rawValues) {
+    const cleaned = String(rawValue).replace(/["']/g, "").trim();
+
+    for (const part of cleaned.split(/[,;\s]+/)) {
+      const id = String(part || "").trim();
+      if (/^\d+$/.test(id)) {
+        ids.add(id);
+      }
+    }
+  }
+
+  return ids;
+}
+
+const OWNER_IDS = parseOwnerIds();
+
+let COLLEGE_BULK_OPEN =
+  String(process.env.COLLEGE_BULK_OPEN ?? "false").trim().toLowerCase() ===
+  "true";
+
+const BOT_CHAT_ID = String(process.env.BOT_CHAT_ID || "").trim();
+
+// true  => a regular user can only view the result of the roll number saved in their own profile
+// false => (later) a user may also check another roll number
+const OWN_ROLL_ONLY =
+  String(process.env.OWN_ROLL_ONLY ?? "true").trim().toLowerCase() !== "false";
+
+const CHANNEL_ID = String(
+  process.env.CHANNEL_ID || process.env.CHAT_ID || ""
+).trim();
+
+if (!BOT_TOKEN) {
+  throw new Error("BOT_TOKEN missing in .env");
+}
+
+if (OWNER_IDS.size === 0) {
+  throw new Error(
+    "OWNER_IDS missing in .env. Example: OWNER_IDS=8262361927,8578619711"
+  );
+}
+
+const bot = new TelegramBot(BOT_TOKEN, {
+  polling: true,
+});
+
+const tgSender = require("./tg-send").createSender(bot);
+
+/* =========================================================
+   TELEGRAM COMMAND MENU (the "/" suggestions)
+========================================================= */
+
+const STUDENT_COMMANDS = [
+  { command: "start", description: "Open the main menu and command list" },
+  { command: "profilesetup", description: "Create your student profile" },
+  { command: "myprofile", description: "View your profile" },
+  { command: "locker", description: "Get all your available results" },
+  { command: "resetroll", description: "Update your roll number" },
+  { command: "delprofile", description: "Delete your profile" },
+];
+
+const OWNER_COMMANDS = [
+  ...STUDENT_COMMANDS,
+  { command: "bulk", description: "Bulk result menu" },
+  { command: "bulksubject", description: "Subject-wise bulk search" },
+  { command: "bulkcollege", description: "College-wise bulk search" },
+  { command: "free", description: "Make College Bulk available to profile users" },
+  { command: "unfree", description: "Hide College Bulk from profile users" },
+  { command: "profiles", description: "List saved profiles" },
+];
+
+bot.setMyCommands(STUDENT_COMMANDS).catch((e) => {
+  console.error("setMyCommands error:", e.message);
+});
+
+for (const ownerId of OWNER_IDS) {
+  bot
+    .setMyCommands(OWNER_COMMANDS, {
+      scope: { type: "chat", chat_id: Number(ownerId) },
+    })
+    .catch(() => {});
+}
+
+/* =========================================================
+   USER STATE (auto-expiring) + RATE LIMIT
+========================================================= */
+
+class ExpiringMap extends Map {
+  constructor(ttlMs, isProtected = () => false) {
+    super();
+    this.ttlMs = ttlMs;
+    this.isProtected = isProtected;
+    this.stamps = new Map();
+  }
+
+  set(key, value) {
+    this.stamps.set(key, Date.now());
+    return super.set(key, value);
+  }
+
+  get(key) {
+    const stamp = this.stamps.get(key);
+    if (
+      stamp &&
+      Date.now() - stamp > this.ttlMs &&
+      !this.isProtected(key)
+    ) {
+      this.delete(key);
+      return undefined;
+    }
+    return super.get(key);
+  }
+
+  delete(key) {
+    this.stamps.delete(key);
+    return super.delete(key);
+  }
+
+  sweep() {
+    for (const [key, stamp] of this.stamps) {
+      if (Date.now() - stamp > this.ttlMs && !this.isProtected(key)) {
+        this.delete(key);
+      }
+    }
+  }
+}
+
+// A running college-bulk job keeps its state alive.
+const userState = new ExpiringMap(
+  Math.max(5, Number(process.env.STATE_TTL_MIN || 60)) * 60 * 1000,
+  (chatId) => collegeBulkRunningChats.has(chatId)
+);
+setInterval(() => userState.sweep(), 5 * 60 * 1000).unref();
+
+const rateBuckets = new Map();
+
+function isRateLimited(userId, max = 5, windowMs = 60 * 1000, bucket = "main") {
+  if (OWNER_IDS.has(String(userId))) return false;
+
+  const key = `${bucket}:${userId}`;
+  const now = Date.now();
+  const hits = (rateBuckets.get(key) || []).filter((t) => now - t < windowMs);
+  hits.push(now);
+  rateBuckets.set(key, hits);
+  return hits.length > max;
+}
+setInterval(() => rateBuckets.clear(), 10 * 60 * 1000).unref();
+
+const COLLEGE_CONCURRENCY = Math.max(
+  1,
+  Number(process.env.COLLEGE_CONCURRENCY || 10)
+);
+const _rollFrom = Number(process.env.COLLEGE_ROLL_FROM);
+const _rollTo = Number(process.env.COLLEGE_ROLL_TO);
+const COLLEGE_ROLL_FROM =
+  Number.isInteger(_rollFrom) && _rollFrom >= 1 ? _rollFrom : 1;
+const COLLEGE_ROLL_TO =
+  Number.isInteger(_rollTo) && _rollTo >= COLLEGE_ROLL_FROM ? _rollTo : 220;
+
+const collegeBulkRunningChats = new Set();
+
+const BULK_TELEGRAM_CONCURRENCY = Math.max(
+  1,
+  Number(process.env.BULK_TELEGRAM_CONCURRENCY || 1)
+);
+
+const BULK_SUPABASE_CONCURRENCY = Math.max(
+  1,
+  Number(process.env.BULK_SUPABASE_CONCURRENCY || 2)
+);
+
+function createAsyncQueue(concurrency = 1) {
+  const limit = Math.max(1, Number(concurrency) || 1);
+
+  const pending = [];
+  const allPromises = [];
+  let active = 0;
+
+  function pump() {
+    while (active < limit && pending.length) {
+      const item = pending.shift();
+
+      active++;
+
+      Promise.resolve()
+        .then(() => item.task())
+        .then(item.resolve, item.reject)
+        .finally(() => {
+          active--;
+          pump();
+        });
+    }
+  }
+
+  function add(task) {
+    let resolveOuter;
+    let rejectOuter;
+
+    const promise = new Promise((resolve, reject) => {
+      resolveOuter = resolve;
+      rejectOuter = reject;
+    });
+
+    pending.push({
+      task,
+      resolve: resolveOuter,
+      reject: rejectOuter,
+    });
+
+    allPromises.push(promise);
+
+    pump();
+
+    return promise;
+  }
+
+  async function drain() {
+    if (!allPromises.length) {
+      return [];
+    }
+
+    return Promise.allSettled(allPromises);
+  }
+
+  return { add, drain };
+}
+
+/*
+=========================================================
+DROPDOWN DATA (session / exam / course)
+
+Only the single cache inside result-checker.js is used here.
+=========================================================
+*/
+
+function normalizeCacheKey(value) {
+  return String(value || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+}
+
+function normalizeDropdownItem(item) {
+  if (item === null || item === undefined) {
+    return null;
+  }
+
+  if (typeof item === "string" || typeof item === "number") {
+    const value = String(item).trim();
+    return { value, text: value };
+  }
+
+  if (typeof item === "object") {
+    const value = String(
+      item.value ?? item.id ?? item.text ?? item.name ?? ""
+    ).trim();
+
+    const text = String(
+      item.text ?? item.name ?? item.label ?? item.value ?? item.id ?? ""
+    ).trim();
+
+    if (!value && !text) {
+      return null;
+    }
+
+    return {
+      ...item,
+      value: value || text,
+      text: text || value,
+    };
+  }
+
+  return null;
+}
+
+function normalizeDropdownArray(data) {
+  if (!Array.isArray(data)) {
+    return [];
+  }
+
+  return data.map(normalizeDropdownItem).filter(Boolean);
+}
+
+function findDropdownItem(array, value) {
+  const target = normalizeCacheKey(value);
+
+  return (
+    array.find(
+      (item) =>
+        normalizeCacheKey(item?.value) === target ||
+        normalizeCacheKey(item?.text) === target
+    ) || null
+  );
+}
+
+async function getSessionsCached() {
+  const data = normalizeDropdownArray(await getSessions());
+
+  if (!data.length) {
+    throw new Error("Portal returned no sessions.");
+  }
+
+  return data;
+}
+
+async function getExamTypesCached(session) {
+  const data = normalizeDropdownArray(await getExamTypes(session));
+
+  if (!data.length) {
+    throw new Error(`No exam types returned for ${session}.`);
+  }
+
+  return data;
+}
+
+async function getCoursesCached(session, examType) {
+  let actualExamType = examType;
+
+  try {
+    const matched = findDropdownItem(await getExamTypes(session), examType);
+
+    if (matched) {
+      actualExamType = matched.value || matched.text || examType;
+    }
+  } catch (_) {}
+
+  const data = normalizeDropdownArray(await getCourses(session, actualExamType));
+
+  if (!data.length) {
+    throw new Error(`No courses returned for ${session} / ${actualExamType}.`);
+  }
+
+  return data;
+}
+
+// Fill missing session/exam/course combinations once in the background (keeps the cache ready).
+setTimeout(() => {
+  try {
+    require("./full-scan")
+      .ensureCatalog()
+      .catch(() => {});
+  } catch (_) {}
+}, 8000);
+
+console.log("======================================");
+console.log("🎓 PPU RESULT BOT");
+console.log("======================================");
+console.log("🤖 Bot started");
+console.log("======================================");
+console.log("🔒 Parsed Owner IDs:", [...OWNER_IDS].join(", "));
+console.log("⚡ College Bulk Concurrency:", COLLEGE_CONCURRENCY);
+console.log(
+  `🔢 College Bulk Roll Range: ${String(COLLEGE_ROLL_FROM).padStart(
+    4,
+    "0"
+  )} - ${String(COLLEGE_ROLL_TO).padStart(4, "0")}`
+);
+console.log("======================================");
+
+function isOwner(userId) {
+  const id = String(userId ?? "").trim();
+
+  if (!id) {
+    return false;
+  }
+
+  return OWNER_IDS.has(id);
+}
+
+function isOwnerMessage(msg) {
+  return !!(msg && msg.from && isOwner(msg.from.id));
+}
+
+function isOwnerCallback(query) {
+  return !!(query && query.from && isOwner(query.from.id));
+}
+function isSubjectBulkAllowed(userId) {
+  const id = String(userId ?? "").trim();
+
+  if (!id) {
+    return false;
+  }
+
+  // Owner ko Subject Bulk hamesha available rahega.
+  if (isOwner(id)) {
+    return true;
+  }
+
+  // Normal user: profile setup required.
+  return Boolean(profiles.getByTelegramId(id));
+}
+
+function isCollegeBulkAllowed(userId) {
+  const id = String(userId ?? "").trim();
+
+  if (!id) {
+    return false;
+  }
+
+  // Owner ko College Bulk hamesha available rahega.
+  if (isOwner(id)) {
+    return true;
+  }
+
+  // Normal user: profile + College Bulk FREE required.
+  return (
+    COLLEGE_BULK_OPEN &&
+    Boolean(profiles.getByTelegramId(id))
+  );
+}
+
+function isBulkAllowed(userId) {
+  return (
+    isSubjectBulkAllowed(userId) ||
+    isCollegeBulkAllowed(userId)
+  );
+}
+
+function isBulkMessageAllowed(msg, state = null) {
+  const currentUserId = String(msg?.from?.id ?? "").trim();
+  const stateOwnerId = String(state?.ownerId ?? "").trim();
+
+  if (!currentUserId) {
+    return false;
+  }
+
+  // Bulk session jis Telegram account ne start kiya,
+  // wahi account us session ko continue kare.
+  if (stateOwnerId && stateOwnerId !== currentUserId) {
+    return false;
+  }
+
+  // Owner
+  if (isOwner(currentUserId)) {
+    return true;
+  }
+
+  // Normal user ko profile required hai.
+  if (!profiles.getByTelegramId(currentUserId)) {
+    return false;
+  }
+
+  // Existing state ke bulkType ke according permission.
+  if (state?.bulkType === "subject") {
+    return isSubjectBulkAllowed(currentUserId);
+  }
+
+  if (state?.bulkType === "college") {
+    return isCollegeBulkAllowed(currentUserId);
+  }
+
+  return false;
+}
+
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function encodeValue(value) {
+  return Buffer.from(String(value), "utf8").toString("base64url");
+}
+
+function decodeValue(value) {
+  return Buffer.from(String(value), "base64url").toString("utf8");
+}
+
+function safeFileName(value) {
+  return (
+    String(value || "")
+      .replace(/[<>:"/\\|?*\x00-\x1F]/g, "_")
+      .replace(/\s+/g, "_")
+      .replace(/_+/g, "_")
+      .replace(/^_+|_+$/g, "")
+      .slice(0, 120) || "file"
+  );
+}
+
+/* =========================================================
+   BUTTON LAYOUT + COLOURS
+   Telegram "style": primary (blue) | success (green) | danger (red)
+   Older Telegram clients simply show normal buttons.
+========================================================= */
+
+const BUTTON_COLORS = ["primary", "success", "danger"];
+
+// Splits flat buttons into rows of two; both buttons in a row share one colour.
+function colorRows(buttons, perRow = 2, startColor = 0) {
+  const rows = [];
+
+  for (let i = 0; i < buttons.length; i += perRow) {
+    const style =
+      BUTTON_COLORS[(startColor + i / perRow) % BUTTON_COLORS.length];
+
+    rows.push(buttons.slice(i, i + perRow).map((b) => ({ ...b, style })));
+  }
+
+  return rows;
+}
+
+function navRow(backCallback) {
+  return [
+    { text: "⬅️ Back", callback_data: backCallback, style: "primary" },
+    { text: "❌ Cancel", callback_data: "CANCEL_RESULT", style: "danger" },
+  ];
+}
+
+/* Course categories (shown as a 2 x 2 grid) */
+const COURSE_TYPES = [
+  { code: "UGT", label: "UG (Regular)" },
+  { code: "UGV", label: "UG (Vocational)" },
+  { code: "PGT", label: "PG (Regular)" },
+  { code: "PGV", label: "PG (Vocational)" },
+];
+
+function courseTypeLabel(code) {
+  const found = COURSE_TYPES.find((c) => c.code === code);
+  return found ? `${found.code} — ${found.label}` : null;
+}
+
+// Best-effort classification of a course name into UGT / UGV / PGT / PGV.
+function classifyCourse(text) {
+  const t = String(text || "").toLowerCase();
+
+  const vocational = /vocational|\bvoc\b/.test(t);
+
+  const postGraduate =
+    /\b(m\.?\s?a|m\.?\s?sc|m\.?\s?com|m\.?\s?ed|m\.?\s?lib|m\.?\s?b\.?\s?a|m\.?\s?c\.?\s?a|master|post[\s-]?graduate|pg)\b/.test(
+      t
+    );
+
+  return `${postGraduate ? "PG" : "UG"}${vocational ? "V" : "T"}`;
+}
+
+/* =========================================================
+   USER-FACING TEXT
+========================================================= */
+
+const MSG = {
+  rateLimited:
+    "⏳ <b>Too Many Requests</b>\nPlease wait a minute before trying again.",
+  ownerOnly: "⛔ <b>Access Restricted</b>\nThis feature is available to administrators only.",
+  bulkOwnerOnly:
+    "⛔ <b>Access Restricted</b>\nBulk Result is available to administrators only.",
+  bulkRunning:
+    "⚠️ <b>A college bulk search is already in progress.</b>\nPlease wait for it to finish.",
+  genericError:
+    "❌ <b>Something Went Wrong</b>\nPlease try again in a moment.",
+  invalidRoll:
+    "❌ <b>Invalid Roll Number</b>\nPlease enter a valid numeric roll number.\n\nExample:\n<code>2520631020001</code>\n\nYour current selections have been kept.",
+  invalidProfileRoll:
+    "❌ <b>Invalid Roll Number</b>\nThe roll number must contain exactly <b>13 digits</b>.\n\nExample:\n<code>2620641060085</code>",
+};
+
+function buildCommandList(userId) {
+  const lines = [
+    "📋 <b>Available Commands</b>",
+    "",
+    "👤 <b>Student Commands</b>",
+    "/start — Open the main menu and this command list",
+    "/profilesetup — Create your student profile using your 13-digit roll number",
+    "/myprofile — View your profile details",
+    "/locker — Receive all of your available results in one place",
+    `/resetroll — Update your roll number (up to ${studentProfile.MAX_ROLL_CHANGES} times)`,
+  ];
+
+  if (isSubjectBulkAllowed(userId)) {
+  lines.push(
+    "",
+    "📦 <b>Bulk Commands</b>",
+    "/bulksubject — Start a subject-wise bulk search"
+  );
+}
+
+if (isCollegeBulkAllowed(userId)) {
+  lines.push(
+    "/bulkcollege — Start a college-wise bulk search"
+  );
+}
+
+if (isOwner(userId)) {
+  lines.push(
+    "/bulk — Open the Bulk Result menu"
+  );
+}
+
+  if (isOwner(userId)) {
+    lines.push(
+      "",
+      "⚙️ <b>Owner Commands</b>",
+      "/profiles — List saved profiles",
+      "/viewprofile &lt;roll or Telegram ID&gt; — View a profile",
+      "/editprofile &lt;roll or Telegram ID&gt; &lt;field&gt; &lt;value&gt; — Edit a profile field (name, regno, college, collegecode, session, subject, roll)",
+      "/deleteprofile &lt;roll or Telegram ID&gt; — Delete a profile",
+      "/pdftext &lt;roll or Telegram ID&gt; — View profile PDF diagnostics",
+      "/lockertrace &lt;roll or Telegram ID&gt; — View locker diagnostics",
+      "/fullscan &lt;13-digit roll&gt; — Scan every session, exam type and course"
+    );
+  }
+
+  return lines.join("\n");
+}
+
+async function deleteBotMessage(chatId, messageId) {
+  if (!messageId) {
+    return;
+  }
+
+  try {
+    await bot.deleteMessage(chatId, messageId);
+  } catch (_) {}
+}
+
+async function replaceCurrentMessage(chatId, text, options = {}) {
+  const state = userState.get(chatId);
+
+  if (state && state.messageId) {
+    await deleteBotMessage(chatId, state.messageId);
+    state.messageId = null;
+  }
+
+  const sent = await bot.sendMessage(chatId, text, options);
+
+  if (state) {
+    state.messageId = sent.message_id;
+    userState.set(chatId, state);
+  }
+
+  return sent;
+}
+
+async function clearResultProcess(chatId) {
+  const state = userState.get(chatId);
+
+  if (state && state.messageId) {
+    await deleteBotMessage(chatId, state.messageId);
+  }
+
+  userState.delete(chatId);
+}
+
+function mainMenu(chatId) {
+  const userId = String(chatId ?? "").trim();
+  const profile = profiles.getByTelegramId(userId);
+
+  const buttons = [];
+
+  if (profile) {
+    buttons.push({ text: "👤 My Profile", callback_data: "MY_PROFILE" });
+    buttons.push({ text: "🔐 My Locker", callback_data: "MY_LOCKER" });
+  } else {
+    buttons.push({ text: "🧾 Profile Setup", callback_data: "PROFILE_SETUP" });
+  }
+
+  // Check Result is available to everyone.
+  buttons.push({
+    text: "📊 Check Result",
+    callback_data: "CHECK_RESULT",
+  });
+
+  if (isSubjectBulkAllowed(userId)) {
+    buttons.push({
+      text: "📚 Subject Bulk",
+      callback_data: "BULK_SUBJECT",
+    });
+  }
+
+  if (isCollegeBulkAllowed(userId)) {
+    buttons.push({
+      text: "🏫 College Bulk",
+      callback_data: "BULK_COLLEGE",
+    });
+  }
+
+  buttons.push({ text: "ℹ️ Help", callback_data: "HELP" });
+
+  return {
+    reply_markup: {
+      inline_keyboard: colorRows(buttons),
+    },
+  };
+}
+function ownerMenu() {
+  return {
+    reply_markup: {
+      inline_keyboard: colorRows([
+        { text: "📊 Check Result", callback_data: "CHECK_RESULT" },
+        { text: "👤 My Profile", callback_data: "MY_PROFILE" },
+        { text: "🔐 My Locker", callback_data: "MY_LOCKER" },
+        { text: "📦 Bulk Result", callback_data: "BULK_MENU" },
+      ]),
+    },
+  };
+}
+
+function bulkMenu() {
+  return {
+    reply_markup: {
+      inline_keyboard: colorRows([
+        { text: "📚 Subject", callback_data: "BULK_SUBJECT" },
+        { text: "🏫 College", callback_data: "BULK_COLLEGE" },
+      ]),
+    },
+  };
+}
+
+function navigationButtons(backCallback) {
+  return {
+    reply_markup: {
+      inline_keyboard: [navRow(backCallback)],
+    },
+  };
+}
+
+function selectedDetails(state) {
+  return [
+    "<b>Selected Details</b>",
+
+    `📅 Session: ${
+      state.session
+        ? `<b>${escapeHtml(state.session)}</b>`
+        : "<i>Not selected</i>"
+    }`,
+
+    `🎓 Exam Type: ${
+      state.examType
+        ? `<b>${escapeHtml(state.examType)}</b>`
+        : "<i>Not selected</i>"
+    }`,
+
+    `🏷️ Category: ${
+      state.courseType
+        ? `<b>${escapeHtml(courseTypeLabel(state.courseType) || state.courseType)}</b>`
+        : "<i>Not selected</i>"
+    }`,
+
+    `📚 Course: ${
+      state.course
+        ? `<b>${escapeHtml(state.course)}</b>`
+        : "<i>Not selected</i>"
+    }`,
+  ].join("\n");
+}
+
+async function mergePdfFiles(inputPaths, outputPath) {
+  const mergedPdf = await PDFDocument.create();
+
+  if (!Array.isArray(inputPaths) || !inputPaths.length) {
+    throw new Error("No PDF files available for merging.");
+  }
+
+  const MERGE_BATCH_SIZE = 4;
+
+  for (let start = 0; start < inputPaths.length; start += MERGE_BATCH_SIZE) {
+    const batch = inputPaths.slice(start, start + MERGE_BATCH_SIZE);
+
+    const loaded = await Promise.all(
+      batch.map(async (filePath) => {
+        try {
+          const bytes = await fs.promises.readFile(filePath);
+
+          const sourcePdf = await PDFDocument.load(bytes, {
+            ignoreEncryption: true,
+          });
+
+          return { filePath, sourcePdf };
+        } catch (error) {
+          console.error(
+            "⚠️ PDF merge load skip:",
+            path.basename(filePath),
+            error.message
+          );
+
+          return null;
+        }
+      })
+    );
+
+    for (const item of loaded) {
+      if (!item) continue;
+
+      try {
+        const pages = await mergedPdf.copyPages(
+          item.sourcePdf,
+          item.sourcePdf.getPageIndices()
+        );
+
+        for (const page of pages) {
+          mergedPdf.addPage(page);
+        }
+      } catch (error) {
+        console.error(
+          "⚠️ PDF merge copy skip:",
+          path.basename(item.filePath),
+          error.message
+        );
+      }
+    }
+  }
+
+  if (mergedPdf.getPageCount() === 0) {
+    throw new Error("No valid PDF pages available for merging.");
+  }
+
+  const mergedBytes = await mergedPdf.save();
+
+  await fs.promises.writeFile(outputPath, mergedBytes);
+
+  return outputPath;
+}
+
+async function processMergedPdfToSupabase(subjectPdfPath, job) {
+  const fileName = path.basename(subjectPdfPath);
+
+  try {
+    console.log(`☁️ [SB] Parsing merged PDF → ${fileName}`);
+
+    const results = await extractResultsFromMergedPdf(subjectPdfPath);
+
+    if (!Array.isArray(results) || !results.length) {
+      console.log(`↩️ [SB] No valid results found → ${fileName}`);
+
+      return {
+        parsed: 0,
+        saved: 0,
+        skipped: 0,
+        failed: 0,
+      };
+    }
+
+    console.log(`📄 [SB] Parsed ${results.length} students → ${fileName}`);
+
+    const meta = {
+      session: job.session || job.sessionName || null,
+      examType: job.examType || null,
+      course: job.course || job.courseName || null,
+      majorPaper: job.subject || job.subjectName || null,
+      source: "bulk-college",
+      pdfUrl: null,
+    };
+
+    const savedRows = await saveResults(results, meta);
+
+    /*
+     * Supabase disabled
+     */
+    if (savedRows && !Array.isArray(savedRows) && savedRows.skipped) {
+      console.log(`↩️ [SB] Skipped → ${fileName}: ${savedRows.reason}`);
+
+      return {
+        parsed: results.length,
+        saved: 0,
+        skipped: results.length,
+        failed: 0,
+      };
+    }
+
+    const savedCount = Array.isArray(savedRows)
+      ? savedRows.length
+      : results.length;
+
+    console.log(`✅ [SB] Saved ${savedCount}/${results.length} → ${fileName}`);
+
+    return {
+      parsed: results.length,
+      saved: savedCount,
+      skipped: Math.max(0, results.length - savedCount),
+      failed: 0,
+    };
+  } catch (error) {
+    console.error(`❌ [SB] Failed → ${fileName}:`, error.message);
+
+    return {
+      parsed: 0,
+      saved: 0,
+      skipped: 0,
+      failed: 1,
+      error: error.message,
+    };
+  }
+}
+
+async function processCollegeSubject(
+  chatId,
+  job,
+  subjectIndex,
+  totalSubjects,
+  runDir,
+  status,
+  telegramQueue,
+  supabaseQueue
+) {
+  const startedAt = Date.now();
+
+  const from = COLLEGE_ROLL_FROM;
+  const to = COLLEGE_ROLL_TO;
+  const totalRolls = to - from + 1;
+
+  const safeSubject = safeFileName(job.subject || "Subject");
+
+  const subjectDir = path.join(runDir, `${subjectIndex + 1}-${safeSubject}`);
+
+  await fs.promises.mkdir(subjectDir, { recursive: true });
+
+  const tasks = [];
+
+  for (let roll = from; roll <= to; roll++) {
+    let fullRoll;
+
+    try {
+      fullRoll = bulkCollege.createRollNumber(
+        job.registrationYear,
+        job.collegeCode,
+        job.subjectCode,
+        roll
+      );
+    } catch (error) {
+      console.error(" Roll creation error:", error.message);
+
+      fullRoll = String(job.prefix || "") + String(roll).padStart(4, "0");
+    }
+
+    tasks.push({ roll, fullRoll });
+  }
+
+  console.log("");
+  console.log("======================================");
+  console.log(` SUBJECT ${subjectIndex + 1}/${totalSubjects}`);
+  console.log("======================================");
+  console.log(" Subject:", job.subject);
+  console.log(" Subject Code:", job.subjectCode);
+  console.log(" College:", job.collegeName);
+  console.log(" College Code:", job.collegeCode);
+  console.log(
+    " Roll Range:",
+    `${String(from).padStart(4, "0")} - ${String(to).padStart(4, "0")}`
+  );
+  console.log(" Total Rolls:", totalRolls);
+  console.log(" Search Concurrency:", COLLEGE_CONCURRENCY);
+  console.log("======================================");
+
+  if (status?.message_id) {
+    try {
+      await bot.editMessageText(
+        `🔎 <b>Searching Subject ${subjectIndex + 1} of ${totalSubjects}</b>\n\n` +
+          `🏫 College: <b>${escapeHtml(job.collegeName)}</b>\n` +
+          `📚 Subject: <b>${escapeHtml(job.subject)}</b>\n\n` +
+          `⏳ Searching ${totalRolls} roll numbers...`,
+        {
+          chat_id: chatId,
+          message_id: status.message_id,
+          parse_mode: "HTML",
+        }
+      );
+    } catch (_) {}
+  }
+
+  let checked = 0;
+  let found = 0;
+  let notFound = 0;
+  let errors = 0;
+
+  const cachedPdfPaths = [];
+
+  let nextIndex = 0;
+  let statusUpdating = false;
+
+  async function updateLiveStatus(force = false) {
+    if (statusUpdating) {
+      return;
+    }
+
+    if (!force && checked % 10 !== 0) {
+      return;
+    }
+
+    if (!status?.message_id) {
+      return;
+    }
+
+    statusUpdating = true;
+
+    try {
+      await bot.editMessageText(
+        `📡 <b>Bulk Search in Progress</b>\n\n` +
+          `📚 Subject: <b>${escapeHtml(job.subject)}</b>\n` +
+          `🏫 College: <b>${escapeHtml(job.collegeName)}</b>\n` +
+          `📈 Progress: <b>${checked}/${totalRolls}</b>\n` +
+          `📄 Results Found: <b>${found}</b>\n\n` +
+          `⏳ Please wait...`,
+        {
+          chat_id: chatId,
+          message_id: status.message_id,
+          parse_mode: "HTML",
+        }
+      );
+    } catch (_) {
+    } finally {
+      statusUpdating = false;
+    }
+  }
+
+  async function worker(workerId) {
+    while (true) {
+      const index = nextIndex++;
+
+      if (index >= tasks.length) {
+        return;
+      }
+
+      const task = tasks[index];
+
+      try {
+        console.log(
+          ` [W${workerId}] ${index + 1}/${totalRolls} → ${task.fullRoll} | ${
+            job.subject
+          }`
+        );
+
+        const result = await checkResult({
+          session: job.session,
+          examType: job.examType,
+          course: job.course,
+          roll: task.fullRoll,
+        });
+
+        if (
+          result &&
+          result.success &&
+          result.type === "pdf" &&
+          result.pdfUrl
+        ) {
+          try {
+            const response = await fetch(result.pdfUrl, {
+              signal: AbortSignal.timeout(20000),
+            });
+
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}`);
+            }
+
+            const pdfBuffer = Buffer.from(await response.arrayBuffer());
+
+            const pdfPath = path.join(subjectDir, `${task.fullRoll}.pdf`);
+
+            await fs.promises.writeFile(pdfPath, pdfBuffer);
+
+            cachedPdfPaths.push(pdfPath);
+
+            found++;
+
+            console.log(` [W${workerId}] CACHED → ${task.fullRoll}.pdf`);
+          } catch (downloadError) {
+            errors++;
+
+            console.error(
+              ` [W${workerId}] DOWNLOAD ERROR → ${task.fullRoll}:`,
+              downloadError.message
+            );
+          }
+        } else {
+          notFound++;
+
+          console.log(` [W${workerId}] NOT FOUND → ${task.fullRoll}`);
+        }
+      } catch (error) {
+        errors++;
+
+        console.error(
+          ` [W${workerId}] SEARCH ERROR → ${task.fullRoll}:`,
+          error.message
+        );
+      }
+
+      checked++;
+
+      if (checked % 10 === 0 || checked === totalRolls) {
+        await updateLiveStatus(checked === totalRolls);
+      }
+    }
+  }
+
+  const workerCount = Math.min(COLLEGE_CONCURRENCY, tasks.length);
+
+  await Promise.all(
+    Array.from({ length: workerCount }, (_, i) => worker(i + 1))
+  );
+
+  await updateLiveStatus(true);
+
+  cachedPdfPaths.sort((a, b) => {
+    const rollA = Number(path.basename(a, ".pdf").replace(/\D/g, ""));
+    const rollB = Number(path.basename(b, ".pdf").replace(/\D/g, ""));
+
+    return rollA - rollB;
+  });
+
+  const elapsed = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
+
+  console.log(` Subject search finished → ${job.subject}`);
+  console.log(" Cached PDFs:", cachedPdfPaths.length);
+
+  if (!cachedPdfPaths.length) {
+    if (status?.message_id) {
+      try {
+        await bot.editMessageText(
+          `✅ <b>Subject Completed</b>\n\n` +
+            `📚 Subject: <b>${escapeHtml(job.subject)}</b>\n` +
+            `🔢 Roll Numbers Checked: <b>${checked}</b>\n` +
+            `📄 Result PDFs: <b>0</b>\n\n` +
+            `No result PDFs were found for this subject.\n\n` +
+            `Moving on to the next subject...`,
+          {
+            chat_id: chatId,
+            message_id: status.message_id,
+            parse_mode: "HTML",
+          }
+        );
+      } catch (_) {}
+    }
+
+    return {
+      job,
+      subjectIndex,
+      totalRolls,
+      checked,
+      found: 0,
+      notFound,
+      errors,
+      subjectPdfPath: null,
+      elapsed,
+      telegramPromise: Promise.resolve({ sent: false }),
+      supabasePromise: Promise.resolve({
+        parsed: 0,
+        saved: 0,
+        failed: 0,
+        skipped: 0,
+      }),
+    };
+  }
+
+  console.log(" Merging subject PDFs...");
+
+  const subjectPdfName = `${safeFileName(job.collegeName)}_${safeFileName(
+    job.collegeCode
+  )}_${safeSubject}_${safeFileName(job.session)}_${safeFileName(
+    job.course
+  )}_merged.pdf`;
+
+  const subjectPdfPath = path.join(runDir, subjectPdfName);
+
+  await mergePdfFiles(cachedPdfPaths, subjectPdfPath);
+
+  console.log(" Subject merged:", subjectPdfName);
+
+  const telegramPromise = telegramQueue.add(async () => {
+    const destination = BOT_CHAT_ID || String(chatId);
+
+    try {
+      console.log(` [TG] Sending → ${subjectPdfName}`);
+
+      // size check + auto split (>45MB) + timeout + retry + fallback destination
+      return await tgSender.sendMergedPdf({
+        destination,
+        fallbackDestination: String(chatId),
+        channelId: CHANNEL_ID,
+        filePath: subjectPdfPath,
+        fileName: subjectPdfName,
+      });
+    } catch (error) {
+      console.error(` [TG] Send failed → ${subjectPdfName}:`, error.message);
+
+      return {
+        sent: false,
+        channelSent: false,
+        error: error.message,
+      };
+    }
+  });
+
+  const supabasePromise = supabaseQueue.add(async () => {
+    return processMergedPdfToSupabase(subjectPdfPath, job);
+  });
+
+  if (status?.message_id) {
+    try {
+      await bot.editMessageText(
+        `📎 <b>Subject Merged</b>\n\n` +
+          `📚 Subject: <b>${escapeHtml(job.subject)}</b>\n` +
+          `🔢 Roll Numbers Checked: <b>${checked}</b>\n` +
+          `📄 Result PDFs: <b>${cachedPdfPaths.length}</b>\n\n` +
+          `📤 Telegram: <b>Queued</b>\n` +
+          `☁️ Database: <b>Queued</b>\n\n` +
+          `Starting the next subject...`,
+        {
+          chat_id: chatId,
+          message_id: status.message_id,
+          parse_mode: "HTML",
+        }
+      );
+    } catch (_) {}
+  }
+
+  return {
+    job,
+    subjectIndex,
+    totalRolls,
+    checked,
+    found,
+    notFound,
+    errors,
+    subjectPdfPath,
+    subjectPdfName,
+    elapsed,
+    telegramPromise,
+    supabasePromise,
+  };
+}
+
+async function runCollegeBulkSearch(chatId, jobs) {
+  const startedAt = Date.now();
+
+  let totalRolls = 0;
+  let totalFound = 0;
+  let totalNotFound = 0;
+  let totalErrors = 0;
+
+  let totalSupabaseParsed = 0;
+  let totalSupabaseSaved = 0;
+  let totalSupabaseFailed = 0;
+  let totalSupabaseSkipped = 0;
+
+  let totalTelegramSent = 0;
+  let totalChannelSent = 0;
+  let totalTelegramFailed = 0;
+
+  const subjectResults = [];
+
+  let runDir = null;
+  let statusMessage = null;
+
+  const telegramQueue = createAsyncQueue(BULK_TELEGRAM_CONCURRENCY);
+  const supabaseQueue = createAsyncQueue(BULK_SUPABASE_CONCURRENCY);
+
+  try {
+    if (!Array.isArray(jobs) || !jobs.length) {
+      throw new Error("No valid college bulk jobs found.");
+    }
+
+    runDir = await fs.promises.mkdtemp(
+      path.join(os.tmpdir(), "ppu-college-bulk-")
+    );
+
+    try {
+      const rollsPerSubject = COLLEGE_ROLL_TO - COLLEGE_ROLL_FROM + 1;
+
+      statusMessage = await bot.sendMessage(
+        chatId,
+        `🏫 <b>College Bulk Search Started</b>\n\n` +
+          `🏫 College: <b>${escapeHtml(jobs[0].collegeName)}</b>\n` +
+          `🔖 College Code: <b>${escapeHtml(jobs[0].collegeCode)}</b>\n` +
+          `📚 Subjects: <b>${jobs.length}</b>\n` +
+          `🔢 Roll Numbers per Subject: <b>${rollsPerSubject}</b>\n` +
+          `🧮 Total Roll Numbers: <b>${jobs.length * rollsPerSubject}</b>\n\n` +
+          `⚡ Search: <b>${COLLEGE_CONCURRENCY}</b> concurrent\n` +
+          `📤 Telegram: <b>${BULK_TELEGRAM_CONCURRENCY}</b> concurrent\n` +
+          `☁️ Database: <b>${BULK_SUPABASE_CONCURRENCY}</b> concurrent\n\n` +
+          `⏳ Starting...`,
+        { parse_mode: "HTML" }
+      );
+    } catch (error) {
+      console.error("Status message error:", error.message);
+    }
+
+    const subjectConcurrency = Math.max(
+      1,
+      Number(process.env.BULK_SUBJECT_CONCURRENCY || 1)
+    );
+
+    let nextSubjectIndex = 0;
+
+    async function subjectWorker(workerId) {
+      while (true) {
+        const subjectIndex = nextSubjectIndex++;
+
+        if (subjectIndex >= jobs.length) {
+          return;
+        }
+
+        const job = jobs[subjectIndex];
+
+        try {
+          console.log(
+            `🚀 [S${workerId}] Starting subject ${subjectIndex + 1}/${
+              jobs.length
+            } → ${job.subject}`
+          );
+
+          const result = await processCollegeSubject(
+            chatId,
+            job,
+            subjectIndex,
+            jobs.length,
+            runDir,
+            statusMessage,
+            telegramQueue,
+            supabaseQueue
+          );
+
+          subjectResults[subjectIndex] = result;
+
+          totalRolls += result.totalRolls || 0;
+          totalFound += result.found || 0;
+          totalNotFound += result.notFound || 0;
+          totalErrors += result.errors || 0;
+
+          console.log(
+            ` [S${workerId}] Subject ${
+              subjectIndex + 1
+            } merged/queued → next subject can start`
+          );
+        } catch (error) {
+          console.error(
+            ` [S${workerId}] Subject failed → ${job.subject}:`,
+            error.message
+          );
+
+          const failedResult = {
+            job,
+            subjectIndex,
+            totalRolls: COLLEGE_ROLL_TO - COLLEGE_ROLL_FROM + 1,
+            checked: 0,
+            found: 0,
+            notFound: 0,
+            errors: 1,
+            subjectPdfPath: null,
+            elapsed: Math.max(1, Math.round((Date.now() - startedAt) / 1000)),
+            telegramPromise: Promise.resolve({ sent: false }),
+            supabasePromise: Promise.resolve({
+              parsed: 0,
+              saved: 0,
+              failed: 1,
+              skipped: 0,
+            }),
+          };
+
+          subjectResults[subjectIndex] = failedResult;
+
+          totalRolls += failedResult.totalRolls;
+          totalErrors += 1;
+        }
+      }
+    }
+
+    const workers = Array.from(
+      { length: Math.min(subjectConcurrency, jobs.length) },
+      (_, i) => subjectWorker(i + 1)
+    );
+
+    await Promise.all(workers);
+
+    console.log("======================================");
+    console.log("🔄 ALL SUBJECT SEARCH/MERGE STAGES FINISHED");
+    console.log("☁️ Telegram + Supabase background jobs are now draining...");
+    console.log("======================================");
+
+    const telegramSettled = await telegramQueue.drain();
+    const supabaseSettled = await supabaseQueue.drain();
+
+    for (const result of subjectResults) {
+      if (!result) {
+        continue;
+      }
+
+      if (result.telegramPromise) {
+        const settled = await Promise.allSettled([result.telegramPromise]);
+
+        const value = settled[0]?.value;
+
+        if (settled[0]?.status === "fulfilled") {
+          if (value?.sent) {
+            totalTelegramSent++;
+          }
+
+          if (value?.channelSent) {
+            totalChannelSent++;
+          }
+
+          if (!value?.sent) {
+            totalTelegramFailed++;
+          }
+        } else {
+          totalTelegramFailed++;
+        }
+      }
+
+      if (result.supabasePromise) {
+        const settled = await Promise.allSettled([result.supabasePromise]);
+
+        const value = settled[0]?.value;
+
+        if (settled[0]?.status === "fulfilled") {
+          totalSupabaseParsed += Number(value?.parsed || 0);
+          totalSupabaseSaved += Number(value?.saved || 0);
+          totalSupabaseFailed += Number(value?.failed || 0);
+          totalSupabaseSkipped += Number(value?.skipped || 0);
+        } else {
+          totalSupabaseFailed++;
+        }
+      }
+    }
+
+    console.log(`📤 Telegram queue settled: ${telegramSettled.length}`);
+    console.log(`☁️ Supabase queue settled: ${supabaseSettled.length}`);
+
+    const elapsed = Date.now() - startedAt;
+
+    const seconds = Math.max(1, Math.round(elapsed / 1000));
+
+    const rate = (totalRolls / seconds).toFixed(2);
+
+    console.log("======================================");
+    console.log("🏁 COLLEGE BULK SEARCH FINISHED");
+    console.log("======================================");
+    console.log("📚 Subjects:", jobs.length);
+    console.log("🔢 Total Rolls:", totalRolls);
+    console.log("📄 Total PDFs:", totalFound);
+    console.log("❌ Search/Download Errors:", totalErrors);
+    console.log("☁️ Supabase Parsed:", totalSupabaseParsed);
+    console.log("💾 Supabase Saved:", totalSupabaseSaved);
+    console.log("↩️ Supabase Skipped:", totalSupabaseSkipped);
+    console.log("❌ Supabase Failed:", totalSupabaseFailed);
+    console.log("📤 Telegram Sent:", totalTelegramSent);
+    console.log("📢 Channel Copied:", totalChannelSent);
+    console.log("❌ Telegram Failed:", totalTelegramFailed);
+    console.log("⏱️ Time:", seconds, "sec");
+    console.log("⚡ Speed:", rate, "roll/sec");
+    console.log("======================================");
+
+    if (statusMessage) {
+      try {
+        await bot.editMessageText(
+          `🎉 <b>College Bulk Search Completed</b>\n\n` +
+            `🏫 College: <b>${escapeHtml(jobs[0].collegeName)}</b>\n` +
+            `📚 Subjects: <b>${jobs.length}</b>\n` +
+            `🔢 Roll Numbers Checked: <b>${totalRolls}</b>\n` +
+            `📄 Result PDFs: <b>${totalFound}</b>\n\n` +
+            `☁️ Records Parsed: <b>${totalSupabaseParsed}</b>\n` +
+            `💾 Records Saved: <b>${totalSupabaseSaved}</b>\n` +
+            `📤 Files Sent: <b>${totalTelegramSent}</b>\n` +
+            `📢 Channel Copies: <b>${totalChannelSent}</b>\n\n` +
+            `⏱️ Time Taken: <b>${seconds}s</b>\n` +
+            `🚀 Speed: <b>${rate} rolls/sec</b>`,
+          {
+            chat_id: chatId,
+            message_id: statusMessage.message_id,
+            parse_mode: "HTML",
+          }
+        );
+      } catch (_) {}
+    }
+
+    return {
+      totalSubjects: jobs.length,
+      totalRolls,
+      totalFound,
+      totalNotFound,
+      totalErrors,
+      supabaseExtractedCount: totalSupabaseParsed,
+      supabaseSavedCount: totalSupabaseSaved,
+      supabaseFailedCount: totalSupabaseFailed,
+      telegramSentCount: totalTelegramSent,
+      channelCopiedCount: totalChannelSent,
+      telegramFailedCount: totalTelegramFailed,
+      seconds,
+      rate,
+    };
+  } finally {
+    if (runDir) {
+      try {
+        await fs.promises.rm(runDir, {
+          recursive: true,
+          force: true,
+        });
+
+        console.log("🧹 Temporary cache cleaned");
+      } catch (cleanupError) {
+        console.error("⚠️ Temporary cleanup error:", cleanupError.message);
+      }
+    }
+
+    collegeBulkRunningChats.delete(chatId);
+
+    const state = userState.get(chatId);
+
+    if (state) {
+      state.collegeBulkRunning = false;
+      state.collegeBulkCompletedAt = Date.now();
+
+      userState.set(chatId, state);
+    }
+  }
+}
+
+/* =========================================================
+   RESULT CHECK FLOW
+   Session → Exam Type → Category (UGT/UGV/PGT/PGV) → Course → Roll
+========================================================= */
+
+async function startResultProcess(chatId) {
+  try {
+    await clearResultProcess(chatId);
+
+    userState.set(chatId, {
+      mode: "result",
+      step: "session",
+      session: null,
+      examType: null,
+      courseType: null,
+      course: null,
+      roll: null,
+      rollAttempts: 0,
+      messageId: null,
+    });
+
+    return showSessions(chatId);
+  } catch (error) {
+    console.error("Start result process error:", error);
+
+    await clearResultProcess(chatId);
+
+    return bot.sendMessage(
+      chatId,
+      "❌ <b>Unable to Start</b>\nThe result check could not be started. Please try again shortly.",
+      {
+        parse_mode: "HTML",
+        ...(isOwner(chatId) ? ownerMenu() : mainMenu(chatId)),
+      }
+    );
+  }
+}
+
+async function showSessions(chatId) {
+  try {
+    const state = userState.get(chatId);
+
+    if (!state) {
+      return startResultProcess(chatId);
+    }
+
+    state.step = "session";
+    userState.set(chatId, state);
+
+    const sessions = await getSessionsCached();
+
+    if (!sessions.length) {
+      throw new Error("No sessions are currently available.");
+    }
+
+    const buttons = sessions.map((session) => ({
+      text:
+        state.session === session.value
+          ? `✅ ${session.text}`
+          : session.text,
+      callback_data: "SESSION_" + encodeValue(session.value),
+    }));
+
+    const keyboard = [];
+
+    for (let i = 0; i < buttons.length; i += 2) {
+      keyboard.push(buttons.slice(i, i + 2));
+    }
+
+    keyboard.push(navRow("BACK_SESSION"));
+
+    return replaceCurrentMessage(
+      chatId,
+      `📅 <b>Step 1 of 5 — Select Session</b>
+
+<b>Selected Details</b>
+📅 Session: <i>Not selected</i>
+
+Please choose your examination session.`,
+      {
+        parse_mode: "HTML",
+        reply_markup: {
+          inline_keyboard: keyboard,
+        },
+      }
+    );
+  } catch (error) {
+    console.error("Session error:", error);
+
+    await clearResultProcess(chatId);
+
+    return bot.sendMessage(
+      chatId,
+      "❌ <b>Sessions Unavailable</b>\nThe list of sessions could not be loaded. Please try again shortly.",
+      {
+        parse_mode: "HTML",
+        ...mainMenu(chatId),
+      }
+    );
+  }
+}
+
+async function showExamTypes(chatId, session) {
+  try {
+    const state = userState.get(chatId);
+
+    if (!state) {
+      return startResultProcess(chatId);
+    }
+
+    state.step = "exam";
+    state.session = session;
+    userState.set(chatId, state);
+
+    console.log("======================================");
+    console.log("🔎 Loading Exam Types");
+    console.log(`Session: ${session}`);
+    console.log("======================================");
+
+    const exams = await getExamTypesCached(session);
+
+    if (!exams.length) {
+      throw new Error("No exam types are currently available.");
+    }
+
+    const buttons = exams.map((exam) => ({
+      text:
+        state.examType === exam.value
+          ? `✅ ${exam.text}`
+          : exam.text,
+      callback_data: "EXAM_" + encodeValue(exam.value),
+    }));
+
+    const keyboard = [];
+
+    for (let i = 0; i < buttons.length; i += 2) {
+      keyboard.push(buttons.slice(i, i + 2));
+    }
+
+    keyboard.push(navRow("BACK_SESSION"));
+
+    return replaceCurrentMessage(
+      chatId,
+      `🎓 <b>Step 2 of 5 — Select Exam Type</b>
+
+<b>Selected Details</b>
+📅 Session: <b>${session}</b>
+🎓 Exam Type: <i>Not selected</i>
+
+Please choose the examination type.`,
+      {
+        parse_mode: "HTML",
+        reply_markup: {
+          inline_keyboard: keyboard,
+        },
+      }
+    );
+  } catch (error) {
+    console.error("Exam Type error:", error);
+
+    await clearResultProcess(chatId);
+
+    return bot.sendMessage(
+      chatId,
+      "❌ <b>Exam Types Unavailable</b>\nThe exam type list could not be loaded. Please try again shortly.",
+      {
+        parse_mode: "HTML",
+        ...mainMenu(chatId),
+      }
+    );
+  }
+}
+
+async function showCourseTypes(chatId, session, examType) {
+  const state = userState.get(chatId);
+
+  if (!state) {
+    return startResultProcess(chatId);
+  }
+
+  state.step = "coursetype";
+
+  userState.set(chatId, state);
+
+  const buttons = COURSE_TYPES.map((c) => ({
+    text: `${state.courseType === c.code ? "✅ " : ""}${c.code} — ${c.label}`,
+    callback_data: "CTYPE_" + c.code,
+  }));
+
+  const keyboard = [
+    buttons.slice(0, 2),
+    buttons.slice(2, 4),
+    navRow("BACK_EXAM"),
+  ];
+
+  return replaceCurrentMessage(
+    chatId,
+    `🏷️ <b>Step 3 of 5 — Select Category</b>
+
+<b>Selected Details</b>
+📅 Session: <b>${escapeHtml(session)}</b>
+🎓 Exam Type: <b>${escapeHtml(examType)}</b>
+🏷️ Category: <i>Not selected</i>
+
+Please choose the course category.`,
+    {
+      parse_mode: "HTML",
+      reply_markup: {
+        inline_keyboard: keyboard,
+      },
+    }
+  );
+}
+
+async function showCourses(chatId, session, examType) {
+  try {
+    const state = userState.get(chatId);
+
+    if (!state) {
+      return startResultProcess(chatId);
+    }
+
+    state.step = "course";
+    state.session = session;
+    state.examType = examType;
+    userState.set(chatId, state);
+
+    console.log("======================================");
+    console.log("🔎 Loading Courses");
+    console.log(`Session: ${session}`);
+    console.log(`Exam Type: ${examType}`);
+    console.log(`Category: ${state.courseType}`);
+    console.log("======================================");
+
+    const courses = await getCoursesCached(
+      session,
+      examType,
+      state.courseType
+    );
+
+    if (!courses.length) {
+      throw new Error("No courses are currently available.");
+    }
+
+    const buttons = courses.map((course) => ({
+      text:
+        state.course === course.value
+          ? `✅ ${course.text}`
+          : course.text,
+      callback_data: "COURSE_" + encodeValue(course.value),
+    }));
+
+    const keyboard = [];
+
+    for (let i = 0; i < buttons.length; i += 2) {
+      keyboard.push(buttons.slice(i, i + 2));
+    }
+
+    keyboard.push(navRow("BACK_CTYPE"));
+
+    return replaceCurrentMessage(
+      chatId,
+      `📚 <b>Step 4 of 5 — Select Course / Semester</b>
+
+<b>Selected Details</b>
+📅 Session: <b>${session}</b>
+🎓 Exam Type: <b>${examType}</b>
+📖 Category: <b>${state.courseType}</b>
+📚 Course / Semester: <i>Not selected</i>
+
+Please choose your course / semester.`,
+      {
+        parse_mode: "HTML",
+        reply_markup: {
+          inline_keyboard: keyboard,
+        },
+      }
+    );
+  } catch (error) {
+    console.error("Course error:", error);
+
+    await clearResultProcess(chatId);
+
+    return bot.sendMessage(
+      chatId,
+      "❌ <b>Courses Unavailable</b>\nThe course list could not be loaded. Please try again shortly.",
+      {
+        parse_mode: "HTML",
+        ...mainMenu(chatId),
+      }
+    );
+  }
+}
+
+async function showRollNumber(chatId, extraText = "") {
+  const state = userState.get(chatId);
+
+  if (!state) {
+    return startResultProcess(chatId);
+  }
+
+  state.step = "roll";
+
+  state.roll = null;
+
+  userState.set(chatId, state);
+
+  const retryText = extraText ? `\n\n${extraText}` : "";
+
+  return replaceCurrentMessage(
+    chatId,
+    `🧾 <b>Step 5 of 5 — Enter Roll Number</b>
+
+${selectedDetails(state)}
+
+Please send your university roll number (numeric).
+
+Example:
+<code>2520631020001</code>${retryText}`,
+    {
+      parse_mode: "HTML",
+      ...navigationButtons("BACK_COURSE"),
+    }
+  );
+}
+
+async function sendCheckingMessage(chatId, state, roll) {
+  if (state.messageId) {
+    await deleteBotMessage(chatId, state.messageId);
+
+    state.messageId = null;
+  }
+
+  const sent = await bot.sendMessage(
+    chatId,
+    `🔍 <b>Retrieving Your Result</b>
+
+${selectedDetails(state)}
+🧾 Roll Number: <code>${escapeHtml(roll)}</code>
+
+⏳ Please wait a moment...`,
+    {
+      parse_mode: "HTML",
+    }
+  );
+
+  state.messageId = sent.message_id;
+
+  userState.set(chatId, state);
+
+  return sent;
+}
+
+async function safeAnswerCallback(query, text = "") {
+  try {
+    await bot.answerCallbackQuery(query.id, text ? { text } : {});
+  } catch (_) {}
+}
+
+function isBulkCallback(data) {
+  return (
+    data === "BULK_SUBJECT" ||
+    data === "BULK_SUBJECT_SESSION" ||
+    data === "BULK_SUBJECT_EXAM" ||
+    data === "BULK_SUBJECT_COURSE" ||
+    data.startsWith("BULKS_") ||
+    data.startsWith("BULKE_") ||
+    data.startsWith("BULKC_") ||
+    data === "BULK_COLLEGE" ||
+    data.startsWith("COLLEGE_") ||
+    data.startsWith("BULKCS_") ||
+    data.startsWith("BULKCE_") ||
+    data.startsWith("BULKCC_") ||
+    data === "BULK_COLLEGE_SESSION" ||
+    data === "BULK_COLLEGE_EXAM" ||
+    data === "BULK_COLLEGE_COURSE" ||
+    data === "BULK_MENU" ||
+    data === "BULK_CANCEL"
+  );
+}
+
+/* =========================================================
+   BULK SUBJECT — direct open (used by /bulksubject + button)
+========================================================= */
+
+async function openBulkSubject(chatId, userId) {
+  if (collegeBulkRunningChats.has(chatId)) {
+    return bot.sendMessage(chatId, MSG.bulkRunning, { parse_mode: "HTML" });
+  }
+
+  // clear old message/state
+  await clearResultProcess(chatId);
+
+  // fresh bulk-subject state
+  userState.set(chatId, {
+    mode: "bulk",
+    bulkType: "subject",
+    bulkStep: "session",
+    ownerId: String(userId),
+    messageId: null,
+    bulkMessageId: null,
+  });
+
+  // subject.js: start() = "Subject / College" type menu (it returns to this button - loop),
+  // startSubject() = Step 1 "Select Session". The Subject button needs startSubject.
+  const entry =
+    typeof bulkSubject.startSubject === "function"
+      ? "startSubject"
+      : typeof bulkSubject.start === "function"
+      ? "start"
+      : null;
+
+  if (!entry) {
+    return bot.sendMessage(
+      chatId,
+      "❌ <b>Module Unavailable</b>\nThe subject bulk module is not available.",
+      { parse_mode: "HTML" }
+    );
+  }
+
+  try {
+    const result = await bulkSubject[entry](bot, userState, chatId);
+
+    return result;
+  } catch (error) {
+    console.error(`❌ Subject bulk ${entry}() failed:`, error);
+
+    return bot.sendMessage(
+      chatId,
+      `❌ <b>Subject Bulk Could Not Start</b>\n<code>${escapeHtml(
+        String(error.message || error).slice(0, 300)
+      )}</code>`,
+      { parse_mode: "HTML" }
+    );
+  }
+}
+
+bot.on("callback_query", async (query) => {
+  const data = String(query?.data || "");
+
+  const chatId = query?.message?.chat?.id;
+
+  if (!chatId) {
+    await safeAnswerCallback(query);
+    return;
+  }
+  if (isRateLimited(query.from?.id, 40, 60 * 1000, "cb")) {
+    await safeAnswerCallback(query, "Please slow down a little.");
+    return;
+  }
+  if (isBulkCallback(data)) {
+  if (!isBulkAllowed(query.from?.id)) {
+    await safeAnswerCallback(
+      query,
+      "Please complete your profile setup first."
+    );
+    return;
+  }
+
+    try {
+      if (data === "BULK_MENU") {
+        await safeAnswerCallback(query);
+
+        const oldState = userState.get(chatId);
+
+        if (oldState?.messageId) {
+          await deleteBotMessage(chatId, oldState.messageId);
+        }
+
+        userState.set(chatId, {
+          mode: "bulk",
+          bulkType: null,
+          bulkStep: "menu",
+          ownerId: String(query.from.id),
+          messageId: null,
+          bulkMessageId: null,
+        });
+
+        return bot.sendMessage(
+          chatId,
+          "📦 <b>Bulk Result</b>\n\nPlease choose a bulk mode.",
+          {
+            parse_mode: "HTML",
+            ...bulkMenu(),
+          }
+        );
+      }
+
+      if (data === "BULK_SUBJECT") {
+        await safeAnswerCallback(query);
+        return await openBulkSubject(chatId, query.from.id);
+      }
+
+      if (data === "BULK_COLLEGE") {
+        await safeAnswerCallback(query);
+
+        const state = userState.get(chatId) || {};
+
+        state.mode = "bulk";
+        state.bulkType = "college";
+        state.ownerId = String(query.from.id);
+        state.messageId = null;
+        state.collegeBulkRunning = false;
+
+        userState.set(chatId, state);
+
+        if (typeof bulkCollege.start === "function") {
+          return await bulkCollege.start(bot, userState, chatId);
+        }
+
+        return bot.sendMessage(
+          chatId,
+          "❌ <b>Module Unavailable</b>\nThe college bulk module is not available.",
+          { parse_mode: "HTML" }
+        );
+      }
+
+      if (
+        data.startsWith("BULKS_") ||
+        data.startsWith("BULKE_") ||
+        data.startsWith("BULKC_") ||
+        data === "BULK_SUBJECT_SESSION" ||
+        data === "BULK_SUBJECT_EXAM" ||
+        data === "BULK_SUBJECT_COURSE"
+      ) {
+        await safeAnswerCallback(query);
+
+        const subjectResult = await bulkSubject.handleCallback(
+          bot,
+          userState,
+          chatId,
+          data
+        );
+
+        return subjectResult;
+      }
+
+      if (
+        data.startsWith("COLLEGE_") ||
+        data.startsWith("BULKCS_") ||
+        data.startsWith("BULKCE_") ||
+        data.startsWith("BULKCC_") ||
+        data === "BULK_COLLEGE_SESSION" ||
+        data === "BULK_COLLEGE_EXAM" ||
+        data === "BULK_COLLEGE_COURSE"
+      ) {
+        await safeAnswerCallback(query);
+
+        const result = await bulkCollege.handleCallback(bot, userState, query);
+
+        if (result?.action === "start") {
+          if (collegeBulkRunningChats.has(chatId)) {
+            return bot.sendMessage(chatId, MSG.bulkRunning, {
+              parse_mode: "HTML",
+            });
+          }
+
+          const jobs = Array.isArray(result.jobs) ? result.jobs : [];
+
+          if (!jobs.length) {
+            return bot.sendMessage(
+              chatId,
+              "❌ <b>No Jobs Generated</b>\nNo valid college bulk jobs could be created from the selection.",
+              { parse_mode: "HTML" }
+            );
+          }
+
+          collegeBulkRunningChats.add(chatId);
+
+          const state = userState.get(chatId);
+
+          if (state) {
+            state.collegeBulkRunning = true;
+            state.ownerId = String(query.from.id);
+
+            userState.set(chatId, state);
+          }
+
+          runCollegeBulkSearch(chatId, jobs).catch((error) => {
+            console.error("❌ College bulk background error:", error);
+          });
+
+          return;
+        }
+
+        return result;
+      }
+
+      if (data === "BULK_CANCEL") {
+        await safeAnswerCallback(query);
+
+        await clearResultProcess(chatId);
+
+        return bot.sendMessage(chatId, "❌ <b>Bulk process cancelled.</b>", {
+          parse_mode: "HTML",
+          ...ownerMenu(),
+        });
+      }
+
+      // Fallback: bulk buttons not covered by the prefix lists above.
+      // If this chat's bulk mode is "subject", hand them to subject.js (roll range, start, back, etc.).
+      if (/^BULK/.test(data)) {
+        const bulkState = userState.get(chatId);
+
+        if (bulkState?.bulkType === "subject") {
+          await safeAnswerCallback(query);
+
+          const fallbackResult = await bulkSubject.handleCallback(
+            bot,
+            userState,
+            chatId,
+            data
+          );
+
+          return fallbackResult;
+        }
+      }
+    } catch (error) {
+      console.error("Bulk callback error:", error);
+
+      await safeAnswerCallback(query, "Something went wrong.");
+
+      return bot.sendMessage(
+        chatId,
+        "❌ <b>Bulk Result Error</b>\nPlease start again using /bulk.",
+        {
+          parse_mode: "HTML",
+          ...ownerMenu(),
+        }
+      );
+    }
+
+    return;
+  }
+
+  try {
+    await safeAnswerCallback(query);
+
+    if (data === "MAIN_MENU") {
+      await clearResultProcess(chatId);
+
+      return bot.sendMessage(
+        chatId,
+        "🏠 <b>Main Menu</b>\n\nPlease choose an option below.",
+        {
+          parse_mode: "HTML",
+          ...(isOwner(query.from?.id) ? ownerMenu() : mainMenu(chatId)),
+        }
+      );
+    }
+
+    if (data === "PROFILE_SETUP") {
+      return startProfileSetup(chatId, query.from);
+    }
+
+    if (data === "PROFILE_CANCEL") {
+      await clearResultProcess(chatId);
+
+      return bot.sendMessage(chatId, "❌ <b>Profile setup cancelled.</b>", {
+        parse_mode: "HTML",
+        ...(isOwner(query.from?.id) ? ownerMenu() : mainMenu(chatId)),
+      });
+    }
+
+    if (data === "MY_PROFILE") {
+      return showMyProfile(chatId, query.from?.id);
+    }
+
+    if (data === "MY_LOCKER") {
+      return openMyLocker(chatId, query.from?.id, query.from);
+    }
+
+    if (data === "DELPROFILE_ASK") {
+      return askDeleteProfile(chatId, query.from?.id);
+    }
+
+    if (data === "DELPROFILE_NO") {
+      await deleteBotMessage(chatId, query.message?.message_id);
+
+      return bot.sendMessage(
+        chatId,
+        "👍 <b>No changes made.</b>\nYour profile has been kept.",
+        {
+          parse_mode: "HTML",
+          ...(isOwner(query.from?.id) ? ownerMenu() : mainMenu(chatId)),
+        }
+      );
+    }
+
+    if (data === "DELPROFILE_YES") {
+      if (isRateLimited(query.from?.id, 3, 60 * 1000, "delprofile")) {
+        return;
+      }
+
+      await deleteBotMessage(chatId, query.message?.message_id);
+
+      return confirmDeleteProfile(chatId, query.from?.id);
+    }
+
+    if (data === "CHECK_RESULT" || data === "CHECK_ANOTHER") {
+      if (
+        OWN_ROLL_ONLY &&
+        !isOwner(query.from?.id) &&
+        !profiles.getByTelegramId(query.from?.id)
+      ) {
+        return startProfileSetup(chatId, query.from);
+      }
+
+      return startResultProcess(chatId);
+    }
+
+    if (data === "CANCEL_RESULT") {
+      await safeAnswerCallback(query);
+
+      // Cancel only the user's current Telegram interaction.
+      // Background/server jobs (bulk searches, PDF processing, etc.)
+      // are intentionally NOT stopped here.
+      const state = userState.get(chatId);
+
+      if (state?.mode === "bulk" && state?.collegeBulkRunning) {
+        // Keep the running bulk job alive.
+        // Only remove the interactive Telegram state.
+        userState.delete(chatId);
+
+        return bot.sendMessage(
+          chatId,
+          "❌ <b>Current interaction cancelled.</b>\n\n" +
+            "⚙️ Your background bulk process is still running on the server.",
+          {
+            parse_mode: "HTML",
+            ...mainMenu(chatId),
+          }
+        );
+      }
+
+      // Normal result/profile interaction:
+      // remove only temporary conversation state.
+      await clearResultProcess(chatId);
+
+      return bot.sendMessage(
+        chatId,
+        "❌ <b>Result check cancelled.</b>",
+        {
+          parse_mode: "HTML",
+          ...(isOwner(query.from?.id) ? ownerMenu() : mainMenu(chatId)),
+        }
+      );
+    }
+
+        if (data === "HELP") {
+      const guide =
+        "\n\n📖 <b>Guide</b>\n" +
+        "🧾 <b>Profile Setup</b>\n" +
+         "Apne 13-digit roll number se profile banayein.\n" +
+
+        "👤 <b>My Profile</b> \n" +
+        "Apni profile details dekhein.\n" +
+
+        "🔐 <b>My Locker</b> \n" +
+        "Apne saare semester / year ke available results ek saath paayein.\n" +
+
+        "📊 <b>Check Result</b>\n" +
+        "Session, exam type, category aur course chunkar result paayein.\n"
+
+      return bot.sendMessage(
+        chatId,
+        buildCommandList(query.from?.id) + guide,
+        {
+          parse_mode: "HTML",
+          disable_web_page_preview: true,
+          ...(isOwner(query.from?.id)
+            ? ownerMenu()
+            : profiles.getByTelegramId(query.from?.id)
+            ? mainMenu(chatId)
+            : newUserMenu()),
+        }
+      );
+    }
+
+    if (data === "BACK_SESSION") {
+      return showSessions(chatId);
+    }
+
+    if (data === "BACK_EXAM") {
+      const state = userState.get(chatId);
+
+      return state?.session
+        ? showExamTypes(chatId, state.session)
+        : showSessions(chatId);
+    }
+
+    if (data === "BACK_CTYPE") {
+      const state = userState.get(chatId);
+
+      return state?.session && state?.examType
+        ? showCourseTypes(chatId, state.session, state.examType)
+        : showSessions(chatId);
+    }
+
+    if (data === "BACK_COURSE") {
+      const state = userState.get(chatId);
+
+      return state?.session && state?.examType
+        ? showCourses(chatId, state.session, state.examType)
+        : showSessions(chatId);
+    }
+
+    if (data.startsWith("SESSION_")) {
+      const session = decodeValue(data.slice("SESSION_".length));
+
+      const state = userState.get(chatId);
+
+      if (!state) {
+        return startResultProcess(chatId);
+      }
+
+      state.session = session;
+      state.examType = null;
+      state.courseType = null;
+      state.course = null;
+      state.roll = null;
+      state.rollAttempts = 0;
+
+      userState.set(chatId, state);
+
+      return showExamTypes(chatId, session);
+    }
+
+    if (data.startsWith("EXAM_")) {
+      const examType = decodeValue(data.slice("EXAM_".length));
+
+      const state = userState.get(chatId);
+
+      if (!state || !state.session) {
+        return startResultProcess(chatId);
+      }
+
+      state.examType = examType;
+      state.courseType = null;
+      state.course = null;
+      state.roll = null;
+      state.rollAttempts = 0;
+
+      userState.set(chatId, state);
+
+      return showCourses(chatId, state.session, examType);
+    }
+
+    if (data.startsWith("CTYPE_")) {
+      const code = data.slice("CTYPE_".length);
+
+      const state = userState.get(chatId);
+
+      if (!state || !state.session || !state.examType) {
+        return startResultProcess(chatId);
+      }
+
+      if (!COURSE_TYPES.some((c) => c.code === code)) {
+        return showCourseTypes(chatId, state.session, state.examType);
+      }
+
+      state.courseType = code;
+      state.course = null;
+      state.roll = null;
+      state.rollAttempts = 0;
+
+      userState.set(chatId, state);
+
+      return showCourses(chatId, state.session, state.examType);
+    }
+
+    if (data.startsWith("COURSE_")) {
+      const course = decodeValue(data.slice("COURSE_".length));
+
+      const state = userState.get(chatId);
+
+      if (!state || !state.session || !state.examType) {
+        return startResultProcess(chatId);
+      }
+
+      state.course = course;
+      state.roll = null;
+      state.rollAttempts = 0;
+
+      userState.set(chatId, state);
+
+      if (OWN_ROLL_ONLY && !isOwner(query.from?.id)) {
+        const ownProfile = profiles.getByTelegramId(query.from?.id);
+
+        if (!ownProfile) {
+          return startProfileSetup(chatId, query.from);
+        }
+
+        if (
+          isRateLimited(
+            query.from?.id,
+            Number(process.env.RESULT_RATE_LIMIT || 5)
+          )
+        ) {
+          return bot.sendMessage(chatId, MSG.rateLimited, {
+            parse_mode: "HTML",
+          });
+        }
+
+        return runRollCheck(chatId, state, ownProfile.roll, query.from?.id);
+      }
+
+      return showRollNumber(chatId);
+    }
+  } catch (error) {
+    console.error("Callback error:", error);
+
+    try {
+      await bot.sendMessage(chatId, MSG.genericError, {
+        parse_mode: "HTML",
+        ...(isOwner(query.from?.id) ? ownerMenu() : mainMenu(chatId)),
+      });
+    } catch (_) {}
+  }
+});
+
+function newUserMenu() {
+  return {
+    reply_markup: {
+      inline_keyboard: [
+        [
+          { text: "🧾 Profile Setup", callback_data: "PROFILE_SETUP", style: "success" },
+          { text: "📊 Check Result", callback_data: "CHECK_RESULT", style: "primary" },
+        ],
+        [
+          { text: "ℹ️ Help", callback_data: "HELP", style: "danger" },
+        ],
+      ],
+    },
+  };
+}
+
+bot.onText(/^\/start(?:@\w+)?$/, async (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from?.id ?? chatId;
+
+  try {
+    await clearResultProcess(chatId);
+
+    const profile = profiles.getByTelegramId(userId);
+
+    // New user (no profile, not owner): sirf profile setup ka msg + 2 buttons
+    if (!profile && !isOwner(userId)) {
+      return bot.sendMessage(
+        chatId,
+        "🎓 <b>PPU Result Bot</b>\n\n" +
+          "<b>Welcome!</b> Create your student profile to recieve your results marksheet quickly.\n\n" +
+          "Tap <b>Profile Setup'</b> and Enter your <b>13-Digit University Roll Number</b> (printed on your admit card) .",
+        {
+          parse_mode: "HTML",
+          ...newUserMenu(),
+        }
+      );
+    }
+
+    // Existing user / owner: pehle jaisa
+    const greeting = profile
+      ? `👋 <b>Welcome back, ${escapeHtml(
+          profile.name || "Student"
+        )}</b>\n\nYour student profile is ready. Please choose an option below.`
+      : "🎓 <b>PPU Result Bot</b>\n\nPlease choose an option below.";
+
+    await bot.sendMessage(chatId, buildCommandList(userId), {
+      parse_mode: "HTML",
+      disable_web_page_preview: true,
+    });
+
+    return bot.sendMessage(chatId, greeting, {
+      parse_mode: "HTML",
+      ...(isOwnerMessage(msg) ? ownerMenu() : mainMenu(chatId)),
+    });
+  } catch (error) {
+    console.error("/start error:", error);
+  }
+});
+
+/* /resultcheck → direct normal Result Check flow */
+bot.onText(/^\/resultcheck(?:@\w+)?$/i, async (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from?.id ?? chatId;
+
+  try {
+    if (
+      OWN_ROLL_ONLY &&
+      !isOwner(userId) &&
+      !profiles.getByTelegramId(userId)
+    ) {
+      return startProfileSetup(chatId, msg.from);
+    }
+
+    return startResultProcess(chatId);
+  } catch (error) {
+    console.error("❌ /resultcheck error:", error);
+
+    return bot.sendMessage(
+      chatId,
+      "❌ <b>Unable to start Result Check.</b>\nPlease try again.",
+      { parse_mode: "HTML" }
+    );
+  }
+});
+bot.onText(/^\/profilesetup(?:@\w+)?$/i, (msg) =>
+  startProfileSetup(msg.chat.id, msg.from)
+);
+
+bot.onText(/^\/resetroll(?:@\w+)?$/i, (msg) =>
+  startRollReset(msg.chat.id, msg.from)
+);
+
+bot.onText(/^\/myprofile(?:@\w+)?$/i, (msg) =>
+  showMyProfile(msg.chat.id, msg.from?.id)
+);
+
+bot.onText(/^\/delprofile(?:@\w+)?$/i, (msg) =>
+  askDeleteProfile(msg.chat.id, msg.from?.id)
+);
+
+bot.onText(/^\/locker(?:@\w+)?$/i, (msg) =>
+  openMyLocker(msg.chat.id, msg.from?.id, msg.from)
+);
+
+bot.onText(/^\/(free|unfree)(?:@\w+)?$/i, async (msg, match) => {
+  const chatId = msg.chat.id;
+
+  if (!isOwnerMessage(msg)) {
+    return bot.sendMessage(chatId, MSG.ownerOnly, {
+      parse_mode: "HTML",
+    });
+  }
+
+  const command = String(match?.[1] || "").toLowerCase();
+  const newValue = command === "free";
+
+  COLLEGE_BULK_OPEN = newValue;
+  process.env.COLLEGE_BULK_OPEN = String(newValue);
+
+  const envPath = path.join(__dirname, ".env");
+
+  try {
+    let envText = fs.existsSync(envPath)
+      ? fs.readFileSync(envPath, "utf8")
+      : "";
+
+    const line = `COLLEGE_BULK_OPEN=${newValue}`;
+
+    if (/^COLLEGE_BULK_OPEN=.*$/m.test(envText)) {
+      envText = envText.replace(/^COLLEGE_BULK_OPEN=.*$/m, line);
+    } else {
+      envText = envText.trimEnd() + `\n${line}\n`;
+    }
+
+    fs.writeFileSync(envPath, envText, "utf8");
+
+    return bot.sendMessage(
+      chatId,
+      newValue
+        ? "🟢 <b>College Bulk is now FREE</b>\n\nNormal users with a profile can now see and use College Bulk."
+        : "🔴 <b>College Bulk is now UNFREE</b>\n\nCollege Bulk is now hidden from normal users.",
+      {
+        parse_mode: "HTML",
+      }
+    );
+  } catch (error) {
+    console.error("College Bulk setting update error:", error);
+
+    return bot.sendMessage(
+      chatId,
+      "❌ <b>Setting Update Failed</b>\n\nCollege Bulk setting could not be updated.",
+      {
+        parse_mode: "HTML",
+      }
+    );
+  }
+});
+
+/* /bulksubject → straight to the session step */
+bot.onText(/^\/bulksubject(?:@\w+)?$/i, async (msg) => {
+  const chatId = msg.chat.id;
+
+  if (!isSubjectBulkAllowed(msg.from?.id)) {
+    return bot.sendMessage(
+      chatId,
+      "👤 <b>Profile Setup Required</b>\n\nPlease complete your profile setup first to use Subject Bulk.",
+      { parse_mode: "HTML" }
+    );
+  }
+
+  try {
+    await openBulkSubject(chatId, msg.from.id);
+  } catch (error) {
+    console.error("/bulksubject error:", error);
+
+    await clearResultProcess(chatId);
+
+    bot.sendMessage(
+      chatId,
+      "❌ <b>Subject Bulk Could Not Start</b>\nPlease try again.",
+      {
+        parse_mode: "HTML",
+      }
+    );
+  }
+});
+
+bot.onText(/^\/bulkcollege(?:@\w+)?$/i, async (msg) => {
+  const chatId = msg.chat.id;
+
+  if (!isBulkAllowed(msg.from?.id)) {
+  return bot.sendMessage(
+    chatId,
+    "👤 <b>Profile Setup Required</b>\n\nPlease complete your profile setup first to use Bulk Result.",
+    { parse_mode: "HTML" }
+  );
+}
+
+  try {
+    const oldState = userState.get(chatId);
+
+    if (oldState?.messageId) {
+      await deleteBotMessage(chatId, oldState.messageId);
+    }
+
+    userState.set(chatId, {
+      mode: "bulk",
+      bulkType: "college",
+      ownerId: String(msg.from.id),
+      messageId: null,
+      bulkMessageId: null,
+      collegeBulkRunning: false,
+    });
+
+    if (typeof bulkCollege.start === "function") {
+      return await bulkCollege.start(bot, userState, chatId);
+    }
+
+    return bot.sendMessage(
+      chatId,
+      "❌ <b>Module Unavailable</b>\nThe college bulk module is not available.",
+      { parse_mode: "HTML" }
+    );
+  } catch (error) {
+    console.error("/bulkcollege error:", error);
+
+    return bot.sendMessage(
+      chatId,
+      "❌ <b>College Bulk Could Not Start</b>\nPlease try again.",
+      {
+        parse_mode: "HTML",
+      }
+    );
+  }
+});
+
+bot.onText(/^\/bulk(?:@\w+)?$/, async (msg) => {
+  const chatId = msg.chat.id;
+
+  if (!isBulkAllowed(msg.from?.id)) {
+  return bot.sendMessage(
+    chatId,
+    "👤 <b>Profile Setup Required</b>\n\nPlease complete your profile setup first to use Bulk Result.",
+    { parse_mode: "HTML" }
+  );
+}
+
+  try {
+    if (collegeBulkRunningChats.has(chatId)) {
+      return bot.sendMessage(chatId, MSG.bulkRunning, {
+        parse_mode: "HTML",
+      });
+    }
+
+    await clearResultProcess(chatId);
+
+    userState.set(chatId, {
+      mode: "bulk",
+      bulkType: null,
+      bulkStep: "menu",
+      ownerId: String(msg.from.id),
+      messageId: null,
+      bulkMessageId: null,
+    });
+
+    return bot.sendMessage(
+      chatId,
+      "📦 <b>Bulk Result</b>\n\nPlease choose a bulk mode.",
+      {
+        parse_mode: "HTML",
+        ...bulkMenu(),
+      }
+    );
+  } catch (error) {
+    console.error("/bulk error:", error);
+
+    return bot.sendMessage(
+      chatId,
+      "❌ <b>Bulk Menu Unavailable</b>\nThe bulk menu could not be opened. Please try again.",
+      {
+        parse_mode: "HTML",
+        ...ownerMenu(),
+      }
+    );
+  }
+});
+
+bot.on("message", async (msg) => {
+  if (!msg.text) {
+    return;
+  }
+
+  const chatId = msg.chat.id;
+
+  const text = msg.text.trim();
+
+  if (text.startsWith("/")) {
+    return;
+  }
+
+  const state = userState.get(chatId);
+
+  if (!state) {
+    return;
+  }
+
+  if (state.mode === "profile") {
+    return handleProfileMessage(chatId, state, text, msg);
+  }
+
+  if (state.mode === "bulk") {
+    const currentUserId = String(msg.from?.id ?? "").trim();
+
+    const stateOwnerId = String(state.ownerId ?? "").trim();
+
+    const authorized = isBulkMessageAllowed(msg, state);
+
+    if (!authorized) {
+      console.log(
+        `🔒 Unauthorized bulk message blocked → ${currentUserId} | state owner: ${stateOwnerId}`
+      );
+
+      return;
+    }
+
+    try {
+      const handledBySubject = await bulkSubject.handleMessage(
+        bot,
+        userState,
+        msg
+      );
+
+      if (handledBySubject) {
+        return;
+      }
+
+      const handledByCollege = await bulkCollege.handleMessage(
+        bot,
+        userState,
+        msg
+      );
+
+      if (handledByCollege) {
+        return;
+      }
+    } catch (error) {
+      console.error("Bulk message error:", error);
+
+      await clearResultProcess(chatId);
+
+      return bot.sendMessage(
+        chatId,
+        `❌ <b>Bulk Result Error</b>
+Your input could not be processed.
+Please start again using /bulk.`,
+        {
+          parse_mode: "HTML",
+          ...mainMenu(chatId),
+        }
+      );
+    }
+
+    return;
+  }
+
+  if (state.step !== "roll") {
+    return;
+  }
+
+  let roll = text;
+
+  if (OWN_ROLL_ONLY && !isOwnerMessage(msg)) {
+    const ownProfile = profiles.getByTelegramId(msg.from?.id);
+
+    if (!ownProfile) {
+      return startProfileSetup(chatId, msg.from);
+    }
+
+    roll = ownProfile.roll;
+  }
+
+  if (!/^\d{5,20}$/.test(roll)) {
+    return bot.sendMessage(chatId, MSG.invalidRoll, {
+      parse_mode: "HTML",
+    });
+  }
+  if (
+    isRateLimited(msg.from?.id, Number(process.env.RESULT_RATE_LIMIT || 5))
+  ) {
+    return bot.sendMessage(chatId, MSG.rateLimited, { parse_mode: "HTML" });
+  }
+  return runRollCheck(chatId, state, roll, msg.from?.id);
+});
+
+/* =========================================================
+   STUDENT PROFILE / LOCKER
+========================================================= */
+
+const lockerRunning = new Set();
+
+function profileButtons(chatId) {
+  return {
+    reply_markup: {
+      inline_keyboard: colorRows([
+        { text: "🔐 My Locker", callback_data: "MY_LOCKER" },
+        { text: "📊 Check Result", callback_data: "CHECK_RESULT" },
+        { text: "🏠 Main Menu", callback_data: "MAIN_MENU" },
+      ]),
+    },
+  };
+}
+
+/* =========================================================
+   /delprofile  (a user can remove their own saved profile)
+========================================================= */
+
+async function askDeleteProfile(chatId, userId) {
+  const profile = profiles.getByTelegramId(userId);
+
+  if (!profile) {
+    return bot.sendMessage(
+      chatId,
+      "ℹ️ <b>No Profile Found</b>\n\nYou do not have a saved profile. Send /profilesetup to create one.",
+      { parse_mode: "HTML" }
+    );
+  }
+
+  if (lockerRunning.has(String(userId))) {
+    return bot.sendMessage(
+      chatId,
+      "⏳ <b>Your locker is still loading.</b>\nPlease send /delprofile again once it has finished.",
+      { parse_mode: "HTML" }
+    );
+  }
+
+  return bot.sendMessage(
+    chatId,
+    "🗑️ <b>Delete Profile?</b>\n\n" +
+      "Your saved profile details will be removed from this bot, including your roll number, name and academic details.\n\n" +
+      "You can create a new profile at any time using /profilesetup.\n\n" +
+      `Roll Number: <code>${escapeHtml(profile.roll)}</code>`,
+    {
+      parse_mode: "HTML",
+      reply_markup: {
+        inline_keyboard: [
+          [
+            {
+              text: "✅ Yes, Delete",
+              callback_data: "DELPROFILE_YES",
+              style: "danger",
+            },
+            {
+              text: "↩️ Keep Profile",
+              callback_data: "DELPROFILE_NO",
+              style: "success",
+            },
+          ],
+        ],
+      },
+    }
+  );
+}
+
+async function confirmDeleteProfile(chatId, userId) {
+  const key = String(userId);
+
+  if (lockerRunning.has(key)) {
+    return bot.sendMessage(
+      chatId,
+      "⏳ <b>Your locker is still loading.</b>\nPlease try again in a moment.",
+      { parse_mode: "HTML" }
+    );
+  }
+
+  // Only the requesting user's own profile (matched by Telegram ID).
+  const removed = await profiles.removeSelf(userId);
+
+  if (!removed) {
+    return bot.sendMessage(
+      chatId,
+      "ℹ️ <b>Profile Already Removed</b>\nThere is no saved profile on this account.",
+      {
+        parse_mode: "HTML",
+      }
+    );
+  }
+
+  // Clear any remaining in-memory data for this roll.
+  forgetRoll(removed.roll);
+
+  try {
+    require("./full-scan").forgetRoll(removed.roll);
+  } catch (_) {}
+
+  userState.delete(chatId);
+
+  return bot.sendMessage(
+    chatId,
+    "✅ <b>Profile Deleted</b>\n\nYour saved profile details have been removed.\n\nSend /profilesetup whenever you would like to create a new profile.",
+    {
+      parse_mode: "HTML",
+      ...(isOwner(userId) ? ownerMenu() : mainMenu(chatId)),
+    }
+  );
+}
+
+async function startRollReset(chatId, from) {
+  const userId = from?.id ?? chatId;
+
+  const existing = profiles.getByTelegramId(userId);
+
+  if (!existing) {
+    return startProfileSetup(chatId, from);
+  }
+
+  if (!isOwner(userId) && studentProfile.rollChangesLeft(existing) <= 0) {
+    return bot.sendMessage(
+      chatId,
+      `🚫 <b>Change Limit Reached</b>\nA roll number can be updated up to ${studentProfile.MAX_ROLL_CHANGES} times, and this limit has been used.`,
+      { parse_mode: "HTML", ...mainMenu(chatId) }
+    );
+  }
+
+  const left = isOwner(userId)
+    ? "unlimited"
+    : `${studentProfile.rollChangesLeft(existing)} / ${studentProfile.MAX_ROLL_CHANGES}`;
+
+  return startProfileSetup(chatId, from, { reset: true, left });
+}
+
+async function startProfileSetup(chatId, from, opts = {}) {
+  const userId = from?.id ?? chatId;
+
+  const existing = profiles.getByTelegramId(userId);
+
+  if (existing && !isOwner(userId) && !opts.reset) {
+    return bot.sendMessage(
+      chatId,
+      `✅ <b>Your profile is already set up.</b>\nTo update your roll number, use /resetroll (up to ${studentProfile.MAX_ROLL_CHANGES} times).`,
+      {
+        parse_mode: "HTML",
+        ...mainMenu(chatId),
+      }
+    );
+  }
+
+  await clearResultProcess(chatId);
+
+  const sent = await bot.sendMessage(
+    chatId,
+    `🧾 <b>${opts.reset ? "Update Roll Number" : "Profile Setup"}</b>${
+      opts.reset ? `\n🔁 Changes remaining: <b>${opts.left}</b>` : ""
+    }
+
+Please send your <b>13-digit university roll number</b>.
+(Printed on your admit card.)
+
+Example:
+<code>2620641060085</code>`,
+    {
+      parse_mode: "HTML",
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "❌ Cancel", callback_data: "PROFILE_CANCEL", style: "danger" }],
+        ],
+      },
+    }
+  );
+
+  userState.set(chatId, {
+    mode: "profile",
+    step: "roll",
+    messageId: sent.message_id,
+    userId: String(userId),
+    username: from?.username || "",
+    reset: Boolean(opts.reset),
+  });
+}
+
+async function handleProfileMessage(chatId, state, text, msg) {
+  if (state.step !== "roll") {
+    return;
+  }
+
+  if (!/^\d{13}$/.test(text)) {
+    return bot.sendMessage(chatId, MSG.invalidProfileRoll, {
+      parse_mode: "HTML",
+    });
+  }
+
+  if (isRateLimited(msg.from?.id, 5, 60 * 1000, "profile")) {
+    return bot.sendMessage(chatId, MSG.rateLimited, { parse_mode: "HTML" });
+  }
+
+  state.step = "building";
+
+  userState.set(chatId, state);
+
+  const waiting = await bot.sendMessage(
+    chatId,
+    "⏳ <b>Setting Up Your Profile</b>\nPlease wait a moment while your details are verified.",
+    { parse_mode: "HTML" }
+  );
+
+  try {
+    const result = await studentProfile.createProfile({
+      telegramId: msg.from?.id ?? chatId,
+      username: msg.from?.username || "",
+      roll: text,
+      unlimited: isOwner(msg.from?.id),
+    });
+
+    await deleteBotMessage(chatId, waiting.message_id);
+
+    if (!result.ok && result.limitReached) {
+      await clearResultProcess(chatId);
+
+      return bot.sendMessage(
+        chatId,
+        `🚫 <b>Change Limit Reached</b>\n${escapeHtml(result.message)}`,
+        { parse_mode: "HTML", ...mainMenu(chatId) }
+      );
+    }
+
+    if (!result.ok) {
+      state.step = "roll";
+
+      userState.set(chatId, state);
+
+      return bot.sendMessage(
+        chatId,
+        `❌ <b>Profile Could Not Be Created</b>
+${escapeHtml(result.message)}
+
+Please send a valid roll number.`,
+        {
+          parse_mode: "HTML",
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "❌ Cancel", callback_data: "PROFILE_CANCEL", style: "danger" }],
+            ],
+          },
+        }
+      );
+    }
+
+    await clearResultProcess(chatId);
+
+    const resetNote =
+      state.reset && !isOwner(msg.from?.id)
+        ? `\n\n🔁 Roll number changes remaining: <b>${studentProfile.rollChangesLeft(
+            result.profile
+          )} / ${studentProfile.MAX_ROLL_CHANGES}</b>`
+        : "";
+
+    const note =
+      resetNote +
+      (result.profile.namePending
+        ? "\n\nℹ️ Your result is not yet available on the portal, so your name will be added automatically once it is published."
+        : "");
+
+    return bot.sendMessage(
+      chatId,
+      `✅ <b>Profile Ready</b>\n\n${studentProfile.formatProfile(
+        result.profile
+      )}${note}`,
+      {
+        parse_mode: "HTML",
+        ...(isOwner(msg.from?.id) ? ownerMenu() : mainMenu(chatId)),
+      }
+    );
+  } catch (error) {
+    console.error("Profile setup error:", error);
+
+    await deleteBotMessage(chatId, waiting.message_id);
+
+    state.step = "roll";
+
+    userState.set(chatId, state);
+
+    return bot.sendMessage(
+      chatId,
+      "❌ <b>Temporary Issue</b>\nPlease send your roll number again, or try again in a few minutes.",
+      { parse_mode: "HTML" }
+    );
+  }
+}
+
+async function showMyProfile(chatId, userId) {
+  let profile = profiles.getByTelegramId(userId);
+
+  if (!profile) {
+    return startProfileSetup(chatId, { id: userId });
+  }
+
+  if (profile.namePending) {
+    profile = await studentProfile.refreshPendingName(profile);
+  }
+
+  return bot.sendMessage(
+    chatId,
+    isOwner(userId)
+      ? studentProfile.formatProfileForOwner(profile)
+      : studentProfile.formatProfile(profile),
+    {
+      parse_mode: "HTML",
+      ...profileButtons(chatId),
+    }
+  );
+}
+
+async function openMyLocker(chatId, userId, from) {
+  const profile = profiles.getByTelegramId(userId);
+
+  if (!profile) {
+    return startProfileSetup(chatId, from || { id: userId });
+  }
+
+  const key = String(userId);
+
+  if (lockerRunning.has(key)) {
+    return bot.sendMessage(
+      chatId,
+      "⏳ <b>Your locker is already loading.</b>\nPlease wait a moment.",
+      { parse_mode: "HTML" }
+    );
+  }
+
+  if (isRateLimited(userId, 3, 60 * 1000, "locker")) {
+    return bot.sendMessage(chatId, MSG.rateLimited, { parse_mode: "HTML" });
+  }
+
+  lockerRunning.add(key);
+
+  const status = await bot.sendMessage(
+    chatId,
+    "🔐 <b>My Locker</b>\n\n⏳ Retrieving your available results...",
+    { parse_mode: "HTML" }
+  );
+
+  try {
+    const { sent, total } = await studentProfile.sendLocker(
+      bot,
+      chatId,
+      profile,
+      { channelId: CHANNEL_ID }
+    );
+
+    await deleteBotMessage(chatId, status.message_id);
+
+    return bot.sendMessage(
+      chatId,
+      sent
+        ? `✅ <b>Locker Ready</b>\n📄 ${sent} of ${total} result(s) have been sent to you.`
+        : "📭 <b>No Results Available Yet</b>\nYour results will appear here as soon as they are published.",
+      {
+        parse_mode: "HTML",
+        ...(isOwner(userId) ? ownerMenu() : mainMenu(chatId)),
+      }
+    );
+  } catch (error) {
+    console.error("Locker error:", error);
+
+    await deleteBotMessage(chatId, status.message_id);
+
+    return bot.sendMessage(
+      chatId,
+      "❌ <b>Locker Unavailable</b>\nYour locker could not be loaded. Please try again in a few minutes.",
+      { parse_mode: "HTML" }
+    );
+  } finally {
+    lockerRunning.delete(key);
+  }
+}
+
+/* ---------------- OWNER: profile management ---------------- */
+
+function findProfileByArg(arg) {
+  return profiles.getByRoll(arg) || profiles.getByTelegramId(arg);
+}
+
+const PROFILE_EDIT_FIELDS = {
+  name: "name",
+  regno: "regNo",
+  college: "collegeName",
+  collegecode: "collegeCode",
+  session: "sessionLabel",
+  subject: "subject",
+  roll: "roll",
+};
+
+function ownerOnly(msg) {
+  if (isOwnerMessage(msg)) {
+    return true;
+  }
+
+  bot.sendMessage(msg.chat.id, MSG.ownerOnly, { parse_mode: "HTML" });
+
+  return false;
+}
+
+bot.onText(/^\/viewprofile(?:@\w+)?\s+(\d+)$/i, async (msg, match) => {
+  if (!ownerOnly(msg)) return;
+
+  const profile = findProfileByArg(match[1]);
+
+  return bot.sendMessage(
+    msg.chat.id,
+    profile
+      ? studentProfile.formatProfileForOwner(profile)
+      : "❌ Profile not found.",
+    { parse_mode: "HTML" }
+  );
+});
+
+bot.onText(
+  /^\/editprofile(?:@\w+)?\s+(\d+)\s+(\w+)\s+([\s\S]+)$/i,
+  async (msg, match) => {
+    if (!ownerOnly(msg)) return;
+
+    const chatId = msg.chat.id;
+
+    const profile = findProfileByArg(match[1]);
+
+    const field = PROFILE_EDIT_FIELDS[String(match[2]).toLowerCase()];
+
+    const value = String(match[3]).trim();
+
+    if (!profile) {
+      return bot.sendMessage(chatId, "❌ Profile not found.");
+    }
+
+    if (!field) {
+      return bot.sendMessage(
+        chatId,
+        `❌ Invalid field. Allowed fields: ${Object.keys(PROFILE_EDIT_FIELDS).join(", ")}`
+      );
+    }
+
+    if (field === "roll") {
+      const other = profiles.getByRoll(value);
+
+      if (
+        !/^\d{13}$/.test(value) ||
+        (other && String(other.telegramId) !== String(profile.telegramId))
+      ) {
+        return bot.sendMessage(
+          chatId,
+          "❌ The roll number must be 13 digits and must not be linked to another profile."
+        );
+      }
+    }
+
+    profile[field] = value;
+
+    if (field === "sessionLabel") {
+      profile.sessionManual = true;
+    }
+
+    if (field === "name") {
+      profile.namePending = false;
+    }
+
+    await profiles.save(profile);
+
+    return bot.sendMessage(
+      chatId,
+      `✅ Updated.\n\n${studentProfile.formatProfileForOwner(profile)}`,
+      { parse_mode: "HTML" }
+    );
+  }
+);
+
+bot.onText(/^\/deleteprofile(?:@\w+)?\s+(\d+)$/i, async (msg, match) => {
+  if (!ownerOnly(msg)) return;
+
+  const profile = findProfileByArg(match[1]);
+
+  if (!profile) {
+    return bot.sendMessage(msg.chat.id, "❌ Profile not found.");
+  }
+
+  await profiles.remove(profile.telegramId);
+
+  return bot.sendMessage(
+    msg.chat.id,
+    `🗑️ Profile deleted: ${profile.roll} (${profile.name || "no name"})`
+  );
+});
+
+bot.onText(/^\/pdftext(?:@\w+)?\s+(\d+)$/i, async (msg, match) => {
+  if (!ownerOnly(msg)) return;
+
+  const profile = findProfileByArg(match[1]);
+
+  if (!profile) {
+    return bot.sendMessage(msg.chat.id, "❌ Profile not found.");
+  }
+
+  try {
+    const report = await studentProfile.debugProfilePdf(profile);
+
+    return bot.sendMessage(msg.chat.id, report.slice(0, 3900));
+  } catch (error) {
+    return bot.sendMessage(msg.chat.id, `❌ ${error.message}`);
+  }
+});
+
+bot.onText(/^\/lockertrace(?:@\w+)?\s+(\d+)$/i, async (msg, match) => {
+  if (!ownerOnly(msg)) return;
+
+  const profile = findProfileByArg(match[1]);
+
+  if (!profile) {
+    return bot.sendMessage(msg.chat.id, "❌ Profile not found.");
+  }
+
+  try {
+    const report = await studentProfile.traceLocker(profile);
+
+    return bot.sendMessage(msg.chat.id, report.slice(0, 3900));
+  } catch (error) {
+    return bot.sendMessage(msg.chat.id, `❌ ${error.message}`);
+  }
+});
+
+bot.onText(/^\/fullscan(?:@\w+)?\s+(\d{13})$/i, async (msg, match) => {
+  if (!ownerOnly(msg)) return;
+
+  const waiting = await bot.sendMessage(
+    msg.chat.id,
+    "🔎 Full scan in progress (all sessions, exam types and courses). This may take some time."
+  );
+
+  try {
+    const chunks = await studentProfile.fullScanReportChunks(match[1]);
+
+    for (const chunk of chunks) {
+      await bot.sendMessage(msg.chat.id, chunk, {
+        parse_mode: "HTML",
+        disable_web_page_preview: true,
+      });
+    }
+  } catch (error) {
+    await bot.sendMessage(msg.chat.id, `❌ ${error.message}`);
+  } finally {
+    bot.deleteMessage(msg.chat.id, waiting.message_id).catch(() => {});
+  }
+});
+
+bot.onText(/^\/profiles(?:@\w+)?$/i, async (msg) => {
+  if (!ownerOnly(msg)) return;
+
+  const all = profiles.list();
+
+  const lines = all
+    .slice(0, 40)
+    .map((p, i) => `${i + 1}. ${p.roll} — ${p.name || "(name pending)"}`);
+
+  return bot.sendMessage(
+    msg.chat.id,
+    `👥 Total profiles: ${all.length}\n\n${lines.join("\n") || "—"}`
+  );
+});
+
+async function restrictedNotFound(chatId, checkingMessage, roll, reasonText) {
+  if (checkingMessage) {
+    await deleteBotMessage(chatId, checkingMessage.message_id);
+  }
+
+  await clearResultProcess(chatId);
+
+  return bot.sendMessage(
+    chatId,
+    `❌ <b>Result Not Available</b>
+
+Roll Number: <code>${escapeHtml(roll)}</code>
+${reasonText}`,
+    {
+      parse_mode: "HTML",
+      reply_markup: {
+        inline_keyboard: colorRows([
+          {
+            text: "🔄 Try Another Selection",
+            callback_data: "CHECK_ANOTHER",
+          },
+          { text: "🏠 Main Menu", callback_data: "MAIN_MENU" },
+        ]),
+      },
+    }
+  );
+}
+
+async function runRollCheck(chatId, state, roll, fromId) {
+  const restricted = OWN_ROLL_ONLY && !isOwner(fromId);
+
+  state.roll = roll;
+  state.step = "checking";
+
+  userState.set(chatId, state);
+
+  let checkingMessage = null;
+
+  try {
+    checkingMessage = await sendCheckingMessage(chatId, state, roll);
+
+    const result = await checkResult({
+      session: state.session,
+      examType: state.examType,
+      course: state.course,
+      roll,
+    });
+
+    if (!result.success && restricted) {
+      return restrictedNotFound(
+        chatId,
+        checkingMessage,
+        roll,
+        "No result was found for this session, exam type and course. Please try a different selection."
+      );
+    }
+
+    if (!result.success) {
+      state.rollAttempts = Number(state.rollAttempts || 0) + 1;
+
+      if (state.rollAttempts < 2) {
+        state.roll = null;
+        state.step = "roll";
+
+        userState.set(chatId, state);
+
+        if (checkingMessage) {
+          await deleteBotMessage(chatId, checkingMessage.message_id);
+        }
+
+        state.messageId = null;
+
+        userState.set(chatId, state);
+
+        return showRollNumber(
+          chatId,
+          `⚠️ <b>Result Not Found</b>
+No result was found for:
+<code>${escapeHtml(roll)}</code>
+Please verify the roll number and try again.
+<b>1 attempt remaining.</b>`
+        );
+      }
+
+      if (checkingMessage) {
+        await deleteBotMessage(chatId, checkingMessage.message_id);
+      }
+
+      await clearResultProcess(chatId);
+
+      return bot.sendMessage(
+        chatId,
+        `❌ <b>Result Not Found</b>
+No result was found for:
+<code>${escapeHtml(roll)}</code>
+Two attempts were made without success.
+Please start a new result check.`,
+        {
+          parse_mode: "HTML",
+          ...(isOwner(fromId) ? ownerMenu() : mainMenu(chatId)),
+        }
+      );
+    }
+
+    if (result.type === "pdf" && result.pdfUrl) {
+      if (checkingMessage) {
+        await deleteBotMessage(chatId, checkingMessage.message_id);
+      }
+
+      state.messageId = null;
+
+      userState.set(chatId, state);
+
+            console.log("📄 Preparing result PDF");
+
+      const filename = `${String(result.roll || roll).trim()}.pdf`;
+
+      let pdfBuffer = null;
+      let archiveHit = false;
+
+      try {
+        await initializeArchive();
+
+        const archivedFile = await findIndividualPdf({
+          roll: result.roll || roll,
+          filename,
+        });
+
+        if (archivedFile) {
+          console.log(
+            `♻️ MEGA archive found: ${filename}`
+          );
+
+          const archivedBuffer = await getIndividualPdf({
+            roll: result.roll || roll,
+            filename,
+          });
+
+          if (Buffer.isBuffer(archivedBuffer)) {
+            pdfBuffer = archivedBuffer;
+            archiveHit = true;
+
+            console.log(
+              `☁️ Using archived PDF: ${filename}`
+            );
+          }
+        }
+      } catch (archiveError) {
+        console.error(
+          "⚠️ MEGA archive lookup failed:",
+          archiveError?.message || archiveError
+        );
+      }
+
+      if (!pdfBuffer) {
+        console.log(
+          "🌐 MEGA archive miss → downloading PDF from portal"
+        );
+
+        const pdfResponse = await fetch(result.pdfUrl, {
+          signal: AbortSignal.timeout(20000),
+        });
+
+        if (!pdfResponse.ok) {
+          throw new Error(
+            `Unable to download result PDF. HTTP ${pdfResponse.status}`
+          );
+        }
+
+        pdfBuffer = Buffer.from(
+          await pdfResponse.arrayBuffer()
+        );
+      }
+
+      console.log(
+        archiveHit
+          ? `♻️ PDF source: MEGA → ${filename}`
+          : `🌐 PDF source: Portal → ${filename}`
+      );
+
+            console.log(
+        "📤 Uploading PDF to Telegram:",
+        filename
+      );
+
+      if (!archiveHit) {
+        try {
+          await archiveIndividualPdf({
+            buffer: pdfBuffer,
+            roll: result.roll || roll,
+            session: state.session,
+            examType: state.examType,
+            course: state.course,
+            filename,
+          });
+
+          console.log(
+            `☁️ Individual PDF archived to MEGA: ${filename}`
+          );
+        } catch (archiveError) {
+          console.error(
+            "⚠️ MEGA archive upload failed:",
+            archiveError?.message || archiveError
+          );
+        }
+      } else {
+        console.log(
+          `♻️ MEGA archive already used: ${filename}`
+        );
+      }
+
+      const tempResultPdf = path.join(
+        os.tmpdir(),
+        `ppu-result-${Date.now()}-${String(roll).replace(/\D/g, "")}.pdf`
+      );
+
+      await fs.promises.writeFile(tempResultPdf, pdfBuffer);
+
+      console.log("🔎 Extracting student details from result PDF...");
+
+      const resultDetails = await extractResultDetails(tempResultPdf);
+
+      try {
+        const saved = await saveResult(resultDetails, {
+          roll: resultDetails.roll || roll,
+          session: state.session,
+          examType: state.examType,
+          course: state.course,
+          pdfUrl: result.pdfUrl,
+          source: "start",
+        });
+
+        if (saved && !saved.skipped) {
+          console.log(
+            `💾 Supabase saved: ${maskRoll(resultDetails.roll || roll)}`
+          );
+        }
+      } catch (error) {
+        console.error("⚠️ Supabase save failed:", error.message);
+      }
+
+      console.log("🧾 Roll Number:", maskRoll(resultDetails.roll || roll));
+      console.log("📊 SGPA:", resultDetails.sgpa || "Not Found");
+      console.log("📝 Remarks:", resultDetails.remarks || "Not Found");
+
+      const caption = buildResultCaption(resultDetails, state, roll);
+
+      console.log("📤 Uploading PDF with result caption...");
+
+      const deliveredMessage = await bot.sendDocument(
+        chatId,
+        pdfBuffer,
+        {
+          parse_mode: "HTML",
+          caption,
+        },
+        {
+          filename,
+          contentType: "application/pdf",
+        }
+      );
+
+      console.log("✅ PDF + result caption sent successfully:", filename);
+
+      /*
+        Copy the same delivered message to the channel.
+        Runs in the background: the user's flow and messages
+        stay exactly the same even if the channel copy fails.
+      */
+      if (CHANNEL_ID && deliveredMessage?.message_id) {
+  try {
+    await bot.copyMessage(
+      CHANNEL_ID,
+      chatId,
+      deliveredMessage.message_id
+    );
+
+    console.log(
+      `📢 Single result copied to channel: ${CHANNEL_ID}`
+    );
+  } catch (channelError) {
+    console.error(
+      "⚠️ Channel copy failed (single result):",
+      channelError?.response?.body || channelError.message
+    );
+  }
+}
+
+      try {
+        await fs.promises.unlink(tempResultPdf);
+      } catch (_) {}
+
+      console.log("✅ PDF sent successfully:", filename);
+
+      await clearResultProcess(chatId);
+
+      return bot.sendMessage(
+        chatId,
+        `✅ <b>Result Delivered</b>
+Please choose what you would like to do next.`,
+        {
+          parse_mode: "HTML",
+
+          reply_markup: {
+            inline_keyboard: colorRows([
+              {
+                text: "🔄 Check Another Result",
+                callback_data: "CHECK_ANOTHER",
+              },
+              {
+                text: "🏠 Main Menu",
+                callback_data: "MAIN_MENU",
+              },
+            ]),
+          },
+        }
+      );
+    }
+
+    if (result.type === "html" && restricted) {
+      return restrictedNotFound(
+        chatId,
+        checkingMessage,
+        roll,
+        "The portal did not provide a result PDF this time. Please try again in a few minutes."
+      );
+    }
+
+    if (result.type === "html") {
+      state.rollAttempts = Number(state.rollAttempts || 0) + 1;
+
+      if (state.rollAttempts < 2) {
+        state.roll = null;
+        state.step = "roll";
+
+        userState.set(chatId, state);
+
+        if (checkingMessage) {
+          await deleteBotMessage(chatId, checkingMessage.message_id);
+        }
+
+        state.messageId = null;
+
+        userState.set(chatId, state);
+
+        return showRollNumber(
+          chatId,
+          `⚠️ <b>Result PDF Unavailable</b>
+The result page was found, but the portal did not provide a PDF.
+Please verify the roll number and try again.
+<b>1 attempt remaining.</b>`
+        );
+      }
+
+      if (checkingMessage) {
+        await deleteBotMessage(chatId, checkingMessage.message_id);
+      }
+
+      await clearResultProcess(chatId);
+
+      return bot.sendMessage(
+        chatId,
+        `❌ <b>Result Could Not Be Retrieved</b>
+The portal did not provide a downloadable result after two attempts.
+Please start a new result check.`,
+        {
+          parse_mode: "HTML",
+          ...mainMenu(chatId),
+        }
+      );
+    }
+
+    if (checkingMessage) {
+      await deleteBotMessage(chatId, checkingMessage.message_id);
+    }
+
+    await clearResultProcess(chatId);
+
+    return bot.sendMessage(
+      chatId,
+      `❌ <b>Result Unavailable</b>
+The result could not be retrieved. Please start a new result check.`,
+      {
+        parse_mode: "HTML",
+        ...mainMenu(chatId),
+      }
+    );
+  } catch (error) {
+    console.error("Result checking error:", error);
+
+    if (checkingMessage) {
+      await deleteBotMessage(chatId, checkingMessage.message_id);
+    }
+
+    if (restricted) {
+      return restrictedNotFound(
+        chatId,
+        null,
+        roll,
+        "The result portal is not responding at the moment. Please try again in a few minutes."
+      );
+    }
+
+    const currentState = userState.get(chatId);
+
+    if (currentState) {
+      currentState.roll = null;
+      currentState.step = "roll";
+      currentState.messageId = null;
+
+      userState.set(chatId, currentState);
+
+      return showRollNumber(
+        chatId,
+        `⚠️ <b>Temporary Issue</b>
+The result portal could not be reached.
+Your selected session, exam type and course have been kept. Please send the roll number again.
+Send /start to begin a new result check.`
+      );
+    }
+
+    return bot.sendMessage(
+      chatId,
+      `❌ <b>Temporary Issue</b>
+The result could not be checked right now. Please try again shortly.`,
+      {
+        parse_mode: "HTML",
+        ...mainMenu(chatId),
+      }
+    );
+  }
+}
+
+bot.on("polling_error", (error) => {
+  console.error("Telegram polling error:", error.message);
+});
+
+process.on("unhandledRejection", (error) => {
+  console.error("Unhandled rejection:", error);
+});
+
+let shuttingDown = false;
+
+async function shutdown(signal, exitCode = 0) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+
+  console.log(`🛑 ${signal} received - shutting down...`);
+  setTimeout(() => process.exit(exitCode || 1), 10000).unref();
+
+  try {
+    await bot.stopPolling();
+  } catch (_) {}
+  try {
+    await closeAll();
+  } catch (_) {}
+
+  process.exit(exitCode);
+}
+
+process.on("SIGINT", () => shutdown("SIGINT"));
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+
+// State may be corrupt after an uncaught exception: exit and let
+// PM2 / Docker start a clean process.
+process.on("uncaughtException", (error) => {
+  console.error("Uncaught exception:", error);
+  shutdown("uncaughtException", 1);
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
